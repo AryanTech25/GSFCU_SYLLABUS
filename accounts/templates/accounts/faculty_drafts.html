@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}My Drafts | GSFC Curriculum Builder{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <h1 class="section-title">My Draft Syllabi</h1>
+    <a href="{% url 'faculty_dashboard' %}" class="btn btn-outline"
+        style="background: white; border: 1px solid var(--gsfc-border); padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; color: var(--gsfc-blue);">Back
+        to Dashboard</a>
+</div>
+
+<div class="card"
+    style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr
+                    style="background-color: var(--gsfc-blue); color: white; border-bottom: 2px solid var(--gsfc-border);">
+                    <th style="padding: 1rem; text-align: left; color: white;">Course Code</th>
+                    <th style="padding: 1rem; text-align: left; color: white;">Course Name</th>
+                    <th style="padding: 1rem; text-align: left; color: white;">Semester</th>
+                    <th style="padding: 1rem; text-align: left; color: white;">Last Updated</th>
+                    <th style="padding: 1rem; text-align: left; color: white;">Status</th>
+                    <th style="padding: 1rem; text-align: left; color: white;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for draft in drafts %}
+                <tr style="border-bottom: 1px solid #edf2f7; transition: background-color 0.2s;">
+                    <td style="padding: 1rem;">{{ draft.subject.course_code }}</td>
+                    <td style="padding: 1rem;">{{ draft.subject.course_name }}</td>
+                    <td style="padding: 1rem;">{{ draft.subject.semester|default:draft.faculty.semester }}</td>
+                    <td style="padding: 1rem;">{{ draft.updated_at|date:"M d, Y H:i" }}</td>
+                    <td style="padding: 1rem;">
+                        <span
+                            style="background-color: #dcfce7; color: var(--gsfc-success); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600;">Draft</span>
+                    </td>
+                    <td style="padding: 1rem;">
+                        <a href="{% url 'syllabus_builder' %}?draft_id={{ draft.id }}"
+                            style="background-color: var(--gsfc-blue); color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem; font-weight: 500; display: inline-block;">
+                            Open Draft
+                        </a>
+                        <a href="{% url 'generate_pdf' draft.id %}"
+                            style="background-color: #4a5568; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem; font-weight: 500; display: inline-block; margin-left: 0.5rem;">
+                            Generate PDF
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="padding: 3rem; text-align: center; color: #718096;">
+                        No drafts found. <a href="{% url 'faculty_dashboard' %}"
+                            style="color: var(--gsfc-blue); text-decoration: underline;">Create a new syllabus</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

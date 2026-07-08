@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Semester Summary Preview{% endblock %}
+
+{% block content %}
+<div class="dashboard-head" style="margin-bottom: 2rem;">
+    <h1 class="section-title">Merge Semester: {{ semester.semester_number }}</h1>
+    <a href="{% url 'faculty_dashboard' %}" class="btn btn-sm btn-outline" onclick="event.preventDefault(); window.location.replace(this.href);">Back to Dashboard</a>
+</div>
+
+<div class="card" style="padding: 1.5rem; overflow-x: auto;">
+    <h3>Semester Summary</h3>
+    <p>This table will be the first page of the merged PDF.</p>
+
+    <table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+        <thead>
+            <tr style="background: #f1f5f9;">
+                <th rowspan="2" style="border: 1px solid #e2e8f0; padding: 4px;">Sr. No</th>
+                <th rowspan="2" style="border: 1px solid #e2e8f0; padding: 4px;">Course Code</th>
+                <th rowspan="2" style="border: 1px solid #e2e8f0; padding: 4px;">Course Name</th>
+                <th colspan="4" style="border: 1px solid #e2e8f0; padding: 4px; text-align: center;">Teaching Scheme
+                    (Hours)</th>
+                <th colspan="4" style="border: 1px solid #e2e8f0; padding: 4px; text-align: center;">Teaching Credit
+                </th>
+                <th colspan="6" style="border: 1px solid #e2e8f0; padding: 4px; text-align: center;">Evaluation Scheme
+                    (Marks)</th>
+            </tr>
+            <tr style="background: #f1f5f9;">
+                <!-- Teaching -->
+                <th style="border: 1px solid #e2e8f0;">L</th>
+                <th style="border: 1px solid #e2e8f0;">P</th>
+                <th style="border: 1px solid #e2e8f0;">T</th>
+                <th style="border: 1px solid #e2e8f0;">Total</th>
+                <!-- Credit -->
+                <th style="border: 1px solid #e2e8f0;">L</th>
+                <th style="border: 1px solid #e2e8f0;">P</th>
+                <th style="border: 1px solid #e2e8f0;">T</th>
+                <th style="border: 1px solid #e2e8f0;">Total</th>
+                <!-- Eval -->
+                <th style="border: 1px solid #e2e8f0;">Th MS</th>
+                <th style="border: 1px solid #e2e8f0;">Th CEC</th>
+                <th style="border: 1px solid #e2e8f0;">Th ES</th>
+                <th style="border: 1px solid #e2e8f0;">Th Total</th>
+                <th style="border: 1px solid #e2e8f0;">Prac</th>
+                <th style="border: 1px solid #e2e8f0;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_rows %}
+            <tr>
+                <td style="border: 1px solid #e2e8f0; padding: 4px;">{{ row.sr_no }}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 4px;">{{ row.code }}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 4px;">{{ row.name }}</td>
+
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.L }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.P }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.T }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center; font-weight: bold;">{{ row.hours_total }}</td>
+
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.cL }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.cP }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.cT }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center; font-weight: bold;">{{ row.credit_total }}
+                </td>
+
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.mid }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.cec }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.end }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.theory_total }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center;">{{ row.prac_marks }}</td>
+                <td style="border: 1px solid #e2e8f0; text-align: center; font-weight: bold;">{{ row.grand_total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+        <a href="{% url 'faculty_dashboard' %}" class="btn btn-outline" onclick="event.preventDefault(); window.location.replace(this.href);">Cancel</a>
+        <a href="{% url 'generate_semester_pdf' semester.id %}" class="btn btn-primary" target="_blank"
+            style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>📄</span> Generate Final Merged PDF
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,501 @@
+{% extends 'base.html' %}
+
+{% block title %}Program Specific Outcomes (PSO) – GSFC{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    /* ── Page Header ─────────────────────────────────── */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    .page-header h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    .back-link {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: gap 0.2s;
+    }
+    .back-link:hover { gap: 10px; }
+
+    /* ── Card ────────────────────────────────────────── */
+    .pso-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .pso-card-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 20px 0;
+        padding-bottom: 14px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* ── Filter/Dropdown Row ─────────────────────────── */
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr auto;
+        gap: 16px;
+        align-items: flex-end;
+    }
+    @media (max-width: 768px) {
+        .filter-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 480px) {
+        .filter-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Form Controls ───────────────────────────────── */
+    .form-group { margin-bottom: 0; }
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 11px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        box-sizing: border-box;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+    }
+    .form-control:disabled {
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+    textarea.form-control { resize: vertical; min-height: 80px; }
+
+    /* ── Add-PSO Form Grid ────────────────────────────── */
+    .add-form-grid {
+        display: grid;
+        grid-template-columns: 130px 1fr 90px auto;
+        gap: 12px;
+        align-items: flex-end;
+    }
+    @media (max-width: 700px) {
+        .add-form-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 11px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(139,92,246,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(139,92,246,0.35); }
+    .btn-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+        padding: 7px 14px;
+        font-size: 13px;
+    }
+    .btn-warning:hover { transform: translateY(-1px); }
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+        padding: 7px 14px;
+        font-size: 13px;
+    }
+    .btn-danger:hover { transform: translateY(-1px); }
+
+    /* ── PSO Table ────────────────────────────────────── */
+    .pso-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    .pso-table thead tr {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    .pso-table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .pso-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: top;
+        color: #334155;
+        line-height: 1.5;
+    }
+    .pso-table tbody tr:hover { background: #f8fafc; }
+    .pso-table tbody tr:last-child td { border-bottom: none; }
+
+    .pso-code-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+        color: #4c1d95;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 13px;
+        border: 1px solid #c4b5fd;
+        white-space: nowrap;
+    }
+
+    /* ── Empty State ─────────────────────────────────── */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+    .empty-state-icon { font-size: 52px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; font-weight: 500; color: #64748b; margin: 0; }
+
+    /* ── Info Banner ─────────────────────────────────── */
+    .info-banner {
+        background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+        border: 1px solid #c4b5fd;
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #4c1d95;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* ── Selected branch badge ────────────────────────── */
+    .branch-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+        color: #581c87;
+        border: 1px solid #e9d5ff;
+        border-radius: 20px;
+        padding: 4px 14px;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    /* ── Action buttons wrapper ──────────────────────── */
+    .action-btns { display: flex; gap: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <h1>🎯 Program Specific Outcomes (PSO)</h1>
+    <a href="{% url 'admin_dashboard' %}" class="back-link">← Back to Dashboard</a>
+</div>
+
+<!-- STEP 1: Select School, Program & Branch -->
+<div class="pso-card">
+    <h2 class="pso-card-title">🏫 Step 1: Select School, Program &amp; Branch</h2>
+    <form method="GET" id="filter-form">
+        <div class="filter-grid">
+            <!-- School Dropdown -->
+            <div class="form-group">
+                <label class="form-label" for="id_school">School</label>
+                <select name="school_id" id="id_school" class="form-control" onchange="onSchoolChange(this)">
+                    <option value="">— Select School —</option>
+                    {% for school in schools %}
+                    <option value="{{ school.id }}"
+                        {% if selected_school_id == school.id|stringformat:"s" %}selected{% endif %}>
+                        {{ school.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Program Dropdown (JS-populated) -->
+            <div class="form-group">
+                <label class="form-label" for="id_program">Program</label>
+                <select name="program_id" id="id_program" class="form-control"
+                    {% if not selected_school_id %}disabled{% endif %}
+                    onchange="onProgramChange(this)">
+                    <option value="">— Select Program —</option>
+                    {% for prog in programs %}
+                    <option value="{{ prog.id }}"
+                        {% if selected_program_id == prog.id|stringformat:"s" %}selected{% endif %}>
+                        {{ prog.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Branch Dropdown (JS-populated) -->
+            <div class="form-group">
+                <label class="form-label" for="id_branch">Branch</label>
+                <select name="branch_id" id="id_branch" class="form-control"
+                    {% if not selected_program_id %}disabled{% endif %}>
+                    <option value="">— Select Branch —</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}"
+                        {% if selected_branch_id == branch.id|stringformat:"s" %}selected{% endif %}>
+                        {{ branch.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Apply Button -->
+            <button type="submit" class="btn btn-primary" id="apply-btn"
+                {% if not selected_school_id %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}>
+                Apply ✓
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if selected_branch %}
+<!-- STEP 2: Add New PSO -->
+<div class="pso-card">
+    <h2 class="pso-card-title">
+        ➕ Step 2: Add Program Specific Outcome
+        <span class="branch-badge">{{ selected_branch.name }}</span>
+    </h2>
+
+    <form method="POST"
+        action="{% url 'manage_program_specific_outcomes' %}?school_id={{ selected_school_id }}&program_id={{ selected_program_id }}&branch_id={{ selected_branch_id }}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <input type="hidden" name="school_id" value="{{ selected_school_id }}">
+        <input type="hidden" name="program_id" value="{{ selected_program_id }}">
+        <input type="hidden" name="branch_id" value="{{ selected_branch_id }}">
+
+        <div class="add-form-grid">
+            <div class="form-group">
+                <label class="form-label" for="id_pso_code">PSO Code *</label>
+                <input type="text" id="id_pso_code" name="pso_code" class="form-control"
+                    placeholder="e.g. PSO1" maxlength="20" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_pso_description">Description *</label>
+                <textarea id="id_pso_description" name="pso_description" class="form-control"
+                    rows="2" placeholder="Describe this program specific outcome..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_pso_order">Order</label>
+                <input type="number" id="id_pso_order" name="pso_order" class="form-control"
+                    value="0" min="0" placeholder="0">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Add PSO</button>
+        </div>
+    </form>
+</div>
+
+<!-- STEP 3: Existing PSOs -->
+<div class="pso-card">
+    <h2 class="pso-card-title">
+        📋 Existing Program Specific Outcomes
+        {% if existing_psos %}
+        <span style="background:#ede9fe;color:#5b21b6;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #c4b5fd;">
+            {{ existing_psos|length }} PSO(s)
+        </span>
+        {% endif %}
+    </h2>
+
+    {% if existing_psos %}
+    <div style="overflow-x:auto;">
+        <table class="pso-table" id="pso-table">
+            <thead>
+                <tr>
+                    <th style="width:110px">Code</th>
+                    <th>Description</th>
+                    <th style="width:80px;text-align:center;">Order</th>
+                    <th style="width:160px;text-align:center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pso in existing_psos %}
+                <tr>
+                    <td><span class="pso-code-badge">{{ pso.code }}</span></td>
+                    <td>{{ pso.description }}</td>
+                    <td style="text-align:center;color:#94a3b8;font-weight:600;">{{ pso.order }}</td>
+                    <td>
+                        <div class="action-btns" style="justify-content:center;">
+                            <a href="{% url 'edit_program_specific_outcome' pso.id %}"
+                                class="btn btn-warning">✏ Edit</a>
+                            <form method="POST"
+                                action="{% url 'delete_program_specific_outcome' pso.id %}"
+                                onsubmit="return confirm('Delete PSO {{ pso.code }}? This cannot be undone.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">🗑 Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <p>No Program Specific Outcomes defined for <strong>{{ selected_branch.name }}</strong> yet.<br>Use the form above to add the first one.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% elif selected_program_id %}
+<!-- Program selected but branch not yet selected -->
+<div class="info-banner">
+    ℹ️ Please select a <strong>Branch</strong> from the dropdown above and click <strong>Apply</strong> to manage its Program Specific Outcomes.
+</div>
+
+{% elif selected_school_id %}
+<!-- School selected but program not yet selected -->
+<div class="info-banner">
+    ℹ️ Please select a <strong>Program</strong> from the dropdown above to continue.
+</div>
+
+{% else %}
+<!-- Nothing selected yet -->
+<div class="info-banner">
+    ℹ️ Select a <strong>School</strong> first, then a <strong>Program</strong>, then a <strong>Branch</strong> to view and manage its Program Specific Outcomes.
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+    const PROGRAMS_API_URL = "{% url 'get_programs' %}";
+    const BRANCHES_API_URL = "{% url 'get_branches' %}";
+
+    function onSchoolChange(schoolSelect) {
+        const schoolId = schoolSelect.value;
+        const programSelect = document.getElementById('id_program');
+        const branchSelect  = document.getElementById('id_branch');
+        const applyBtn      = document.getElementById('apply-btn');
+
+        // Reset dependent dropdowns
+        programSelect.innerHTML = '<option value="">— Select Program —</option>';
+        branchSelect.innerHTML  = '<option value="">— Select Branch —</option>';
+        programSelect.disabled  = true;
+        branchSelect.disabled   = true;
+        applyBtn.disabled       = true;
+        applyBtn.style.opacity  = '0.5';
+        applyBtn.style.cursor   = 'not-allowed';
+
+        if (!schoolId) return;
+
+        fetch(`${PROGRAMS_API_URL}?school_id=${schoolId}`)
+            .then(res => res.json())
+            .then(data => {
+                data.programs.forEach(prog => {
+                    const opt = document.createElement('option');
+                    opt.value = prog.id;
+                    opt.textContent = prog.name;
+                    programSelect.appendChild(opt);
+                });
+                programSelect.disabled = false;
+                applyBtn.disabled      = false;
+                applyBtn.style.opacity = '1';
+                applyBtn.style.cursor  = 'pointer';
+            })
+            .catch(err => {
+                console.error('Error fetching programs:', err);
+            });
+    }
+
+    function onProgramChange(programSelect) {
+        const programId    = programSelect.value;
+        const branchSelect = document.getElementById('id_branch');
+
+        // Reset branch dropdown
+        branchSelect.innerHTML = '<option value="">— Select Branch —</option>';
+        branchSelect.disabled  = true;
+
+        if (!programId) return;
+
+        fetch(`${BRANCHES_API_URL}?program_id=${programId}`)
+            .then(res => res.json())
+            .then(data => {
+                data.branches.forEach(branch => {
+                    const opt = document.createElement('option');
+                    opt.value = branch.id;
+                    opt.textContent = branch.name;
+                    branchSelect.appendChild(opt);
+                });
+                branchSelect.disabled = false;
+            })
+            .catch(err => {
+                console.error('Error fetching branches:', err);
+            });
+    }
+
+    // On page load: restore correct enable states when selections come from GET params
+    document.addEventListener('DOMContentLoaded', () => {
+        const schoolSelect  = document.getElementById('id_school');
+        const programSelect = document.getElementById('id_program');
+        const branchSelect  = document.getElementById('id_branch');
+        const applyBtn      = document.getElementById('apply-btn');
+
+        if (schoolSelect.value) {
+            programSelect.disabled = false;
+            applyBtn.disabled      = false;
+            applyBtn.style.opacity = '1';
+            applyBtn.style.cursor  = 'pointer';
+        }
+        if (programSelect.value) {
+            branchSelect.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{% block title %}GSFC Curriculum Builder{% endblock %}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/css/gsfc-global.css">
+        
+        <!-- Anti-Cache Headers for Security and Navigation Fix -->
+        <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+
+        <script>
+            // Prevent back-navigation showing cached sensitive pages
+            window.onpageshow = function(event) {
+                if (event.persisted) {
+                    window.location.reload();
+                }
+            };
+        </script>
+
+        {% block extra_head %}{% endblock %}
+    </head>
+
+    <body>
+        <nav class="navbar">
+            <div class="container nav-container">
+                <a href="/" class="brand">GSFC Curriculum Builder</a>
+                <div class="nav-links">
+                    {% if user.is_authenticated %}
+                    <span class="user-greeting">Hello, {{ user.username }}</span>
+                    <a href="{% url 'logout' %}" class="btn btn-outline">Logout</a>
+                    {% endif %}
+                </div>
+            </div>
+        </nav>
+
+        <main class="container main-content">
+            {% if messages %}
+            <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="/static/js/main.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

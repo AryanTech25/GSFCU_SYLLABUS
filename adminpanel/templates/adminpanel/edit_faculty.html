@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Faculty - {{ faculty.full_name }}{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/dropdowns.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const programSelect = document.getElementById('id_program');
+        const branchSelect = document.getElementById('id_branch');
+
+        // Re-enable if they have values (for edit mode)
+        if (programSelect && programSelect.value) {
+            programSelect.disabled = false;
+        }
+        if (branchSelect && branchSelect.value) {
+            branchSelect.disabled = false;
+        }
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin-top: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 class="section-title">Edit Faculty</h1>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline" onclick="event.preventDefault(); window.location.replace(this.href);">Back to Dashboard</a>
+    </div>
+
+    <div class="card"
+        style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <form method="POST" action="">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" name="full_name" class="form-control" value="{{ faculty.full_name }}" required>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label class="form-label">Faculty ID (Username)</label>
+                    <input type="text" name="faculty_id" class="form-control" value="{{ faculty.faculty_id }}" required>
+                </div>
+                <div>
+                    <label class="form-label">Password (Leave blank to keep current)</label>
+                    <input type="password" name="password" class="form-control" placeholder="New Password">
+                </div>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ faculty.email }}" required>
+                </div>
+                <div>
+                    <label class="form-label">Mobile</label>
+                    <input type="text" name="mobile" class="form-control" value="{{ faculty.mobile }}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Semester</label>
+                <select name="semester" class="form-control" required>
+                    <option value="">Select Semester</option>
+                    {% for sem in semesters %}
+                    <option value="{{ sem }}" {% if sem == selected_semester %}selected{% endif %}>
+                        {{ sem }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Academic Year (e.g., 2025-26)</label>
+                <input type="text" name="academic_year" class="form-control" value="{{ faculty.academic_year|default:'' }}" placeholder="YYYY-YY" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">School</label>
+                <select name="school" id="id_school" class="form-control" required>
+                    <option value="">Select School</option>
+                    {% for school in schools %}
+                    <option value="{{ school.id }}" {% if school.id == faculty.school_id %}selected{% endif %}>
+                        {{ school.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Program</label>
+                <select name="program" id="id_program" class="form-control" required>
+                    <option value="">Select School First</option>
+                    {% for program in programs %}
+                    <option value="{{ program.id }}" {% if program.id == faculty.program_id %}selected{% endif %}>
+                        {{ program.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Branch</label>
+                <select name="branch" id="id_branch" class="form-control" required>
+                    <option value="">Select Program First</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if branch.id == faculty.branch_id %}selected{% endif %}>
+                        {{ branch.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="submit" class="btn btn-secondary" style="flex: 1;">Update Faculty</button>
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline"
+                    style="flex: 1; text-align: center;" onclick="event.preventDefault(); window.location.replace(this.href);">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Syllabus List - {{ subject.course_code }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-head" style="margin-bottom: 2rem;">
+    <h1 class="section-title">Syllabus List: {{ subject.course_name }} ({{ subject.course_code }})</h1>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-outline" style="text-decoration: none;">&larr; Back to
+        Dashboard</a>
+</div>
+
+<div class="table-container">
+    <table class="display nowrap" style="width:100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background-color: #f1f5f9; text-align: left;">
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Subject Code</th>
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Subject Name</th>
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Syllabus Status</th>
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Created Date</th>
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">PDF Exists</th>
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for syllabus in syllabi %}
+            <tr>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">{{ subject.course_code }}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">{{ subject.course_name }}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">{{ syllabus.get_status_display }}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">{{ syllabus.created_at|date:"Y-m-d H:i" }}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                    {% if syllabus.pdf_file %}Yes{% else %}No{% endif %}
+                </td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        {% if syllabus.pdf_file %}
+                        <a href="{{ syllabus.pdf_file.url }}" target="_blank" class="btn btn-sm btn-outline"
+                            style="padding: 4px 8px; font-size: 12px; text-decoration: none; border: 1px solid #ccc; border-radius: 4px; color: #333;">
+                            View PDF
+                        </a>
+                        {% endif %}
+
+                        <form method="POST" action="{% url 'delete_syllabus' syllabus.id %}"
+                            onsubmit="return confirm('Delete syllabus? This cannot be undone.');"
+                            style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                style="padding: 4px 8px; font-size: 12px; background-color: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Delete Syllabus
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="padding: 10px; text-align: center;">No syllabus found for this subject.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

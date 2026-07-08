@@ -1,0 +1,470 @@
+{% extends 'base.html' %}
+
+{% block title %}Download PDF{% endblock %}
+
+{% block extra_head %}
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.css">
+<style>
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    /* Subject Cards */
+    .sortable-item {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #e2e8f0;
+        padding: 20px 24px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+        cursor: move;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .sortable-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        border-color: #3b82f6;
+    }
+
+    .sortable-item.sortable-drag {
+        opacity: 0.7;
+        transform: rotate(2deg);
+    }
+
+    .sortable-ghost {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+        border-color: #3b82f6 !important;
+        border-width: 2px !important;
+    }
+
+    /* Drag Handle */
+    .drag-handle {
+        cursor: grab;
+        color: #94a3b8;
+        font-size: 24px;
+        user-select: none;
+        transition: color 0.2s;
+        padding: 4px;
+    }
+
+    .drag-handle:active {
+        cursor: grabbing;
+    }
+
+    .sortable-item:hover .drag-handle {
+        color: #3b82f6;
+    }
+
+    /* Subject Code Badge */
+    .subject-code {
+        font-weight: 700;
+        color: #1e3a8a;
+        font-size: 14px;
+        min-width: 140px;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid #bfdbfe;
+        letter-spacing: 0.5px;
+        text-align: center;
+    }
+
+    /* Subject Name */
+    .subject-name {
+        flex: 1;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        line-height: 1.5;
+    }
+
+    /* Subject Metadata */
+    .subject-meta {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    /* PDF Unavailable */
+    .sortable-item-unavailable {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+        border: 2px dashed #f59e0b !important;
+        opacity: 0.7;
+        cursor: not-allowed !important;
+    }
+
+    .sortable-item-unavailable:hover {
+        transform: none !important;
+        box-shadow: 0 1px 3px rgba(245, 158, 11, 0.1) !important;
+        border-color: #f59e0b !important;
+    }
+
+    .drag-handle-disabled {
+        font-size: 24px;
+        color: #d1d5db;
+        cursor: not-allowed;
+        opacity: 0.4;
+    }
+
+    .pdf-unavailable-label {
+        color: #92400e;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 6px 14px;
+        background: #fef3c7;
+        border-radius: 20px;
+        border: 1px solid #fcd34d;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Filter Section */
+    .filter-section {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 32px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 8px;
+        display: block;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Buttons */
+    .btn-download {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 14px 32px;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 15px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-download:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+
+    .btn-download:active {
+        transform: translateY(0);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        color: #94a3b8;
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        font-size: 16px;
+        font-weight: 500;
+        color: #64748b;
+    }
+
+    /* Subject List Header */
+    .subject-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .subject-list-header h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .subject-count {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        color: #1e3a8a;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 700;
+        border: 1px solid #bfdbfe;
+    }
+
+    /* Card */
+    .card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Individual PDF Download Button */
+    .btn-download-individual {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        margin-left: auto;
+    }
+
+    .btn-download-individual:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .dashboard-head h1 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-head"
+    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1 class="section-title">Download PDF</h1>
+    <a href="{% url 'admin_dashboard' %}" 
+       style="color: #3b82f6; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+        <span>←</span>
+        <span>Back to Dashboard</span>
+    </a>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+    <form method="GET" id="filter-form">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label class="form-label">School</label>
+                <select name="school_id" id="id_school" class="form-control" onchange="this.form.submit()">
+                    <option value="">All Schools</option>
+                    {% for school in schools %}
+                    <option value="{{ school.id }}" {% if selected_school_id == school.id|stringformat:"s" %}selected{% endif %}>
+                        {{ school.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Program</label>
+                <select name="program_id" id="id_program" class="form-control" onchange="this.form.submit()">
+                    <option value="">All Programs</option>
+                    {% for program in programs %}
+                    <option value="{{ program.id }}" {% if selected_program_id == program.id|stringformat:"s" %}selected{% endif %}>
+                        {{ program.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Branch</label>
+                <select name="branch_id" id="id_branch" class="form-control" onchange="this.form.submit()">
+                    <option value="">All Branches</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if selected_branch_id == branch.id|stringformat:"s" %}selected{% endif %}>
+                        {{ branch.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Semester</label>
+                <select name="semester" id="id_semester" class="form-control" onchange="this.form.submit()">
+                    <option value="">All Semesters</option>
+                    {% for sem in semesters %}
+                    <option value="{{ sem.value }}" {% if selected_semester == sem.value %}selected{% endif %}>
+                        {{ sem.display }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Subject List -->
+<div class="card" style="padding: 24px;">
+    <div class="subject-list-header">
+        <h3>📚 Courses</h3>
+        <span class="subject-count">{{ all_subjects|length }} course(s)</span>
+    </div>
+
+    {% if all_subjects %}
+    
+    <!-- Download PDF Button -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+        <a href="{% url 'generate_semester_pdf' %}?school_id={{ selected_school_id|default:'' }}&program_id={{ selected_program_id|default:'' }}&semester={{ selected_semester|default:'' }}&branch_id={{ selected_branch_id|default:'' }}"
+            class="btn-download" style="text-decoration: none;">
+            <span>📥</span>
+            <span>Download Combined PDF</span>
+        </a>
+    </div>
+    
+    <div>
+
+        <div id="sortable-list">
+            {% if assigned_subjects %}
+            {# Show assigned subjects in order #}
+            {% for item in assigned_subjects %}
+            {% if item.subject.has_pdf %}
+            <div class="sortable-item" data-id="{{ item.subject.id }}">
+                <span class="drag-handle">☰</span>
+                <span class="subject-code">{{ item.subject.course_code }}</span>
+                <span class="subject-name">{{ item.subject.course_name }}</span>
+                <span class="subject-meta">
+                    {{ item.subject.school.code }} • {{ item.subject.program.name }} • {{ item.subject.branch.name }} • Sem {{ item.subject.semester }}
+                </span>
+                <a href="{{ item.subject.syllabus.pdf_file.url }}" download class="btn-download-individual" title="Download PDF">
+                    ⬇
+                </a>
+            </div>
+            {% else %}
+            <div class="sortable-item sortable-item-unavailable" data-id="{{ item.subject.id }}">
+                <span class="drag-handle-disabled">☰</span>
+                <span class="subject-code">{{ item.subject.course_code }}</span>
+                <span class="subject-name">{{ item.subject.course_name }}</span>
+                <span class="pdf-unavailable-label">⚠ PDF Not Available</span>
+                <span class="subject-meta">
+                    {{ item.subject.school.code }} • {{ item.subject.program.name }} • {{ item.subject.branch.name }} • Sem {{ item.subject.semester }}
+                </span>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% else %}
+            {# Show all subjects sorted: PDFs first, then unavailable #}
+            {% for subject in all_subjects %}
+            {% if subject.has_pdf %}
+            <div class="sortable-item" data-id="{{ subject.id }}">
+                <span class="drag-handle">☰</span>
+                <span class="subject-code">{{ subject.course_code }}</span>
+                <span class="subject-name">{{ subject.course_name }}</span>
+                <span class="subject-meta">
+                    {{ subject.school.code }} • {{ subject.program.name }} • {{ subject.branch.name }} • Sem {{ subject.semester }}
+                </span>
+                <a href="{{ subject.syllabus.pdf_file.url }}" download class="btn-download-individual" title="Download PDF">
+                    ⬇
+                </a>
+            </div>
+            {% else %}
+            <div class="sortable-item sortable-item-unavailable" data-id="{{ subject.id }}">
+                <span class="drag-handle-disabled">☰</span>
+                <span class="subject-code">{{ subject.course_code }}</span>
+                <span class="subject-name">{{ subject.course_name }}</span>
+                <span class="pdf-unavailable-label">⚠ PDF Not Available</span>
+                <span class="subject-meta">
+                    {{ subject.school.code }} • {{ subject.program.name }} • {{ subject.branch.name }} • Sem {{ subject.semester }}
+                </span>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </div>
+
+
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <p>No subjects match the selected filters.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+    // Initialize SortableJS
+    const el = document.getElementById('sortable-list');
+    if (el) {
+        new Sortable(el, {
+            animation: 150,
+            handle: '.drag-handle',  // Only allow dragging via drag-handle (not drag-handle-disabled)
+            filter: '.sortable-item-unavailable',  // Prevent dragging unavailable items
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onMove: function(evt) {
+                // Prevent moving unavailable items
+                return !evt.dragged.classList.contains('sortable-item-unavailable');
+            }
+        });
+    }
+</script>
+{% endblock %}

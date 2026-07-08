@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Faculty Dashboard{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h1 class="section-title">Faculty Dashboard</h1>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Profile Card -->
+    <div class="card">
+        <h3 class="card-title">My Profile</h3>
+        {% if faculty %}
+        <div style="margin-top: 1rem;">
+            <p><strong>Faculty ID:</strong> {{ faculty.faculty_id }}</p>
+            <p><strong>Email:</strong> {{ faculty.email }}</p>
+            <p><strong>School:</strong> {{ faculty.school.name|default:"-" }}</p>
+        </div>
+        {% else %}
+        <p class="text-light">Profile information not available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Stats or Info Actions can go here -->
+    <div class="card">
+        <h3 class="card-title">Quick Actions</h3>
+        <p class="card-desc">Select a subject below to manage its syllabus.</p>
+        {% if has_drafts %}
+        <div style="margin-top: 1rem;">
+            <a href="{% url 'faculty_drafts' %}" class="btn"
+                style="display: block; text-align: center; background-color: var(--gsfc-yellow); color: var(--gsfc-blue-dark); padding: 0.75rem; border-radius: 4px; text-decoration: none; font-weight: bold;">
+                📂 View My Drafts
+            </a>
+        </div>
+        {% endif %}
+
+
+
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="header-row">
+        <h3>Assigned Subjects</h3>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Course Code</th>
+                <th>Course Name</th>
+                <th>Description</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in subjects_data %}
+            <tr>
+                <td>{{ item.subject.course_code }}</td>
+                <td>{{ item.subject.course_name }}</td>
+                <td>{{ item.subject.description }}</td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                        {% if item.has_draft %}
+                        <div style="display:flex; gap:4px; flex-direction: column;">
+                            <a href="{% url 'syllabus_builder' %}?draft_id={{ item.draft_id }}" class="btn"
+                                style="background-color: white; color: var(--gsfc-yellow); border: 1px solid var(--gsfc-yellow); padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; font-weight: bold; text-align: center;">
+                                ✏ Edit Syllabus
+                            </a>
+                            {% if item.has_pdf %}
+                            <a href="{{ item.pdf_url }}" class="btn" target="_blank"
+                                style="background-color: var(--gsfc-success); color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; text-align: center;">
+                                👁 View Syllabus
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <a href="{% url 'syllabus_builder' %}?subject_id={{ item.subject.id }}" class="btn"
+                            style="background-color: var(--gsfc-blue); color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; text-align: center;">
+                            Create New Syllabus
+                        </a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-light);">No subjects assigned yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

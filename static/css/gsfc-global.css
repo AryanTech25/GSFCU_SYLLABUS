@@ -1,0 +1,748 @@
+/* ==========================================================================
+   GSFC UNIVERSITY PORTAL - GLOBAL STYLESHEET
+   Single Source of Truth for Visual Identity
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. VARIABLES & THEME
+   -------------------------------------------------------------------------- */
+:root {
+    /* GSFC Official Palette */
+    --gsfc-yellow: #F2A900;
+    --gsfc-blue: #0B3C5D;
+    --gsfc-blue-dark: #082A3F;
+    --gsfc-offwhite: #F7F8FA;
+    --gsfc-card: #FFFFFF;
+    --gsfc-border: #D1D5DB;
+    --gsfc-success: #2E8B57;
+    --gsfc-warning: #F59E0B;
+    --gsfc-text: #1F2937;
+    --gsfc-text-light: #6B7280;
+
+    /* Semantic Mappings */
+    --primary: var(--gsfc-blue);
+    --primary-dark: var(--gsfc-blue-dark);
+    --secondary: var(--gsfc-yellow);
+    --background: var(--gsfc-offwhite);
+    --surface: var(--gsfc-card);
+    --text: var(--gsfc-text);
+    --text-light: var(--gsfc-text-light);
+    --border: var(--gsfc-border);
+    --danger: #ef4444;
+    --success: var(--gsfc-success);
+
+    /* Syllabus Builder Aliases (Legacy Support) */
+    --sb-primary: var(--gsfc-blue);
+    --sb-secondary: var(--gsfc-yellow);
+    --sb-accent: var(--gsfc-yellow);
+    --sb-bg: var(--gsfc-offwhite);
+    --sb-text: var(--gsfc-text);
+    --sb-border: var(--gsfc-border);
+    --sb-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* --------------------------------------------------------------------------
+   2. RESET & BASE STYLES
+   -------------------------------------------------------------------------- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--background);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   3. NAVBAR & HEADER
+   -------------------------------------------------------------------------- */
+.navbar {
+    background-color: var(--gsfc-yellow);
+    border-bottom: 4px solid var(--gsfc-blue);
+    /* Stronger official border */
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand {
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--gsfc-blue);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.user-greeting {
+    font-weight: 600;
+    color: var(--gsfc-blue-dark);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--gsfc-blue);
+}
+
+/* --------------------------------------------------------------------------
+   4. BUTTONS
+   -------------------------------------------------------------------------- */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    /* Slightly sharper within GSFC theme */
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--gsfc-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--gsfc-blue-dark);
+}
+
+.btn-secondary {
+    background-color: var(--gsfc-yellow);
+    color: var(--gsfc-blue-dark);
+}
+
+.btn-secondary:hover {
+    background-color: #d97706;
+    /* Darker amber */
+    color: white;
+}
+
+.btn-outline {
+    border: 2px solid var(--gsfc-blue);
+    background: transparent;
+    color: var(--gsfc-blue);
+}
+
+.btn-outline:hover {
+    background-color: var(--gsfc-blue);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.btn-danger {
+    background-color: #dc2626;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. CARDS & AUTH
+   -------------------------------------------------------------------------- */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 5px solid var(--gsfc-blue);
+    /* Official GSFC Card Style */
+    border-radius: 0.5rem;
+    padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.auth-wrapper {
+    display: flex;
+    flex-direction: column;
+    /* Stack logo and card */
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    gap: 2rem;
+    /* Initial gap, effectively increases space between logo and card */
+}
+
+.gsfc-logo-lg {
+    max-width: 280px;
+    height: auto;
+    display: block;
+    margin-bottom: 0.5rem;
+    /* Slight extra spacing */
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Dashboard Action Cards */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.action-card {
+    background: var(--surface);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--gsfc-yellow);
+    /* GSFC Accent */
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--gsfc-blue);
+}
+
+.card-desc {
+    color: var(--gsfc-text);
+    font-size: 0.875rem;
+}
+
+/* --------------------------------------------------------------------------
+   6. FORMS
+   -------------------------------------------------------------------------- */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--gsfc-blue-dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--gsfc-border);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    background-color: #f9fafb;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--gsfc-blue);
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(11, 60, 93, 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   7. TABLES
+   -------------------------------------------------------------------------- */
+.table-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: var(--gsfc-blue);
+    /* Blue Header Bar */
+    color: white;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+.header-row h3 {
+    color: white;
+    margin: 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+th,
+td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    background-color: var(--gsfc-blue);
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+/* --------------------------------------------------------------------------
+   8. ALERTS & MODALS
+   -------------------------------------------------------------------------- */
+.alert {
+    padding: 1rem;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.alert-success {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    overflow-y: auto;
+}
+
+.modal.active {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 4rem;
+}
+
+.modal-content {
+    background: var(--surface);
+    width: 100%;
+    max-width: 600px;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.close-modal {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+/* --------------------------------------------------------------------------
+   9. SYLLABUS BUILDER SPECIFIC STYLES
+   -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+   9. SYLLABUS BUILDER SPECIFIC STYLES
+   -------------------------------------------------------------------------- */
+.sb-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    font-family: 'Inter', sans-serif;
+    color: var(--sb-text);
+}
+
+/* Stepper */
+.sb-stepper {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3rem;
+    position: relative;
+    padding: 0 1rem;
+}
+
+.sb-stepper::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 20px;
+    right: 20px;
+    height: 3px;
+    background: var(--sb-border);
+    transform: translateY(-50%);
+    z-index: 0;
+}
+
+.sb-step {
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border: 3px solid var(--sb-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #718096;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sb-step.active {
+    border-color: var(--sb-primary);
+    background: var(--sb-primary);
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(11, 60, 93, 0.2);
+}
+
+.sb-step.completed {
+    background: var(--sb-secondary);
+    border-color: var(--sb-secondary);
+    color: #fff;
+}
+
+/* SB Card */
+.sb-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--sb-card-shadow);
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--sb-border);
+    border-top: 5px solid var(--sb-primary);
+}
+
+.sb-title {
+    color: var(--sb-primary);
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--sb-bg);
+}
+
+/* SB Forms */
+.sb-form-group {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.sb-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--gsfc-blue-dark);
+    font-size: 0.95rem;
+}
+
+.sb-input,
+.sb-select,
+.sb-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sb-border);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: all 0.2s;
+    background-color: #fcfcfc;
+}
+
+.sb-input:focus,
+.sb-select:focus,
+.sb-textarea:focus {
+    outline: none;
+    border-color: var(--sb-secondary);
+    background-color: white;
+    box-shadow: 0 0 0 4px rgba(242, 169, 0, 0.15);
+}
+
+.sb-input[readonly] {
+    background-color: #F1F5F9;
+    color: #64748b;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+}
+
+.sb-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+/* SB Buttons */
+.sb-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+}
+
+.sb-btn {
+    padding: 0.75rem 2rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sb-btn-primary {
+    background: var(--sb-primary);
+    color: white;
+    box-shadow: 0 2px 4px rgba(11, 60, 93, 0.2);
+}
+
+.sb-btn-primary:hover {
+    background: var(--gsfc-blue-dark);
+    transform: translateY(-1px);
+}
+
+.sb-btn-secondary {
+    background: white;
+    border: 2px solid var(--sb-border);
+    color: var(--gsfc-text-light);
+}
+
+.sb-btn-secondary:hover {
+    border-color: var(--sb-primary);
+    color: var(--sb-primary);
+    background: #F8FAFC;
+}
+
+.sb-btn-yellow {
+    background-color: var(--sb-accent);
+    color: var(--gsfc-blue-dark);
+    border: none;
+    box-shadow: 0 2px 4px rgba(242, 169, 0, 0.3);
+}
+
+.sb-btn-yellow:hover {
+    background-color: #d97706;
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* Add Button */
+.sb-btn-add {
+    background: #F0F9FF;
+    color: var(--sb-primary);
+    width: 100%;
+    margin-top: 1.5rem;
+    border: 2px dashed #BAE6FD;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.sb-btn-add:hover {
+    background: #E0F2FE;
+    border-color: var(--sb-primary);
+}
+
+/* Dynamic Items (Refined) */
+.sb-dynamic-item {
+    background: #FFFFFF;
+    padding: 1.5rem;
+    /* Standardized uniform padding */
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s;
+
+    /* Flexbox layout for perfect alignment */
+    display: flex;
+    flex-direction: column;
+}
+
+.sb-dynamic-item:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border-color: #CBD5E1;
+}
+
+/* Remove Button - Flow Alignment */
+.sb-remove-btn {
+    /* Replaces absolute positioning with Flexbox flow */
+    position: static;
+    order: -1;
+    /* visually moves to top */
+    align-self: flex-end;
+    /* visually aligns to right */
+
+    margin-bottom: 0.75rem;
+    /* space between button and content */
+
+    background: #FFF1F2;
+    color: #E11D48;
+    border: 1px solid #FECDD3;
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.sb-remove-btn:hover {
+    background: #FFE4E6;
+    border-color: #FDA4AF;
+    color: #BE123C;
+}
+
+/* Preview Section */
+.sb-preview-page {
+    background: white;
+    padding: 4rem;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    font-family: 'Times New Roman', serif;
+    color: black;
+    line-height: 1.6;
+}
+
+.sb-preview-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    border-bottom: 2px solid #000;
+    padding-bottom: 1.5rem;
+}
+
+.sb-preview-title {
+    font-size: 22pt;
+    font-weight: 800;
+    color: var(--sb-primary);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.sb-preview-subtitle {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+.sb-preview-section {
+    margin-bottom: 2.5rem;
+}
+
+.sb-preview-h {
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--sb-primary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.25rem;
+}
+
+.sb-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 11pt;
+}
+
+.sb-preview-table th,
+.sb-preview-table td {
+    border: 1px solid #1a202c;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.sb-preview-table th {
+    background-color: var(--sb-primary);
+    color: white;
+    font-weight: 700;
+}
+
+/* Animation */
+.step-content {
+    display: none;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.step-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 10. VENDOR OVERRIDES (DataTables, Select2) */
+.dataTables_wrapper .dataTables_length select {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--gsfc-border);
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--gsfc-border);
+    margin-left: 0.5rem;
+}

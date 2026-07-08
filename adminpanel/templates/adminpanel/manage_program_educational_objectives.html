@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+
+{% block title %}Program Educational Objectives (PEO) – GSFC{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    /* ── Page Header ─────────────────────────────────── */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    .page-header h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    .back-link {
+        color: #059669;
+        text-decoration: none;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: gap 0.2s;
+    }
+    .back-link:hover { gap: 10px; }
+
+    /* ── Card ────────────────────────────────────────── */
+    .peo-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .peo-card-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 20px 0;
+        padding-bottom: 14px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* ── Filter/Dropdown Row ─────────────────────────── */
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 16px;
+        align-items: flex-end;
+    }
+    @media (max-width: 640px) {
+        .filter-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Form Controls ───────────────────────────────── */
+    .form-group { margin-bottom: 0; }
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 11px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        box-sizing: border-box;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: #059669;
+        box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
+    }
+    .form-control:disabled {
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+    textarea.form-control { resize: vertical; min-height: 80px; }
+
+    /* ── Add-PEO Form Grid ────────────────────────────── */
+    .add-form-grid {
+        display: grid;
+        grid-template-columns: 130px 1fr 90px auto;
+        gap: 12px;
+        align-items: flex-end;
+    }
+    @media (max-width: 700px) {
+        .add-form-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 11px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(5,150,105,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(5,150,105,0.35); }
+    .btn-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+        padding: 7px 14px;
+        font-size: 13px;
+    }
+    .btn-warning:hover { transform: translateY(-1px); }
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+        padding: 7px 14px;
+        font-size: 13px;
+    }
+    .btn-danger:hover { transform: translateY(-1px); }
+
+    /* ── PEO Table ────────────────────────────────────── */
+    .peo-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    .peo-table thead tr {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    .peo-table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .peo-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: top;
+        color: #334155;
+        line-height: 1.5;
+    }
+    .peo-table tbody tr:hover { background: #f8fafc; }
+    .peo-table tbody tr:last-child td { border-bottom: none; }
+
+    .peo-code-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        color: #064e3b;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 13px;
+        border: 1px solid #a7f3d0;
+        white-space: nowrap;
+    }
+
+    /* ── Empty State ─────────────────────────────────── */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+    .empty-state-icon { font-size: 52px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; font-weight: 500; color: #64748b; margin: 0; }
+
+    /* ── Info Banner ─────────────────────────────────── */
+    .info-banner {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid #a7f3d0;
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #064e3b;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* ── Selected program badge ──────────────────────── */
+    .program-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        border-radius: 20px;
+        padding: 4px 14px;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    /* ── Action buttons wrapper ──────────────────────── */
+    .action-btns { display: flex; gap: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <h1>🎓 Program Educational Objectives (PEO)</h1>
+    <a href="{% url 'admin_dashboard' %}" class="back-link">← Back to Dashboard</a>
+</div>
+
+<!-- STEP 1: Select School & Program -->
+<div class="peo-card">
+    <h2 class="peo-card-title">🏫 Step 1: Select School &amp; Program</h2>
+    <form method="GET" id="filter-form">
+        <div class="filter-grid">
+            <!-- School Dropdown -->
+            <div class="form-group">
+                <label class="form-label" for="id_school">School</label>
+                <select name="school_id" id="id_school" class="form-control" onchange="onSchoolChange(this)">
+                    <option value="">— Select School —</option>
+                    {% for school in schools %}
+                    <option value="{{ school.id }}"
+                        {% if selected_school_id == school.id|stringformat:"s" %}selected{% endif %}>
+                        {{ school.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Program Dropdown (populated by JS or Django context) -->
+            <div class="form-group">
+                <label class="form-label" for="id_program">Program</label>
+                <select name="program_id" id="id_program" class="form-control"
+                    {% if not selected_school_id %}disabled{% endif %}>
+                    <option value="">— Select Program —</option>
+                    {% for prog in programs %}
+                    <option value="{{ prog.id }}"
+                        {% if selected_program_id == prog.id|stringformat:"s" %}selected{% endif %}>
+                        {{ prog.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Apply Button -->
+            <button type="submit" class="btn btn-primary" id="apply-btn"
+                {% if not selected_school_id %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}>
+                Apply ✓
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if selected_program %}
+<!-- STEP 2: Add New PEO -->
+<div class="peo-card">
+    <h2 class="peo-card-title">
+        ➕ Step 2: Add Program Educational Objective
+        <span class="program-badge">{{ selected_program.name }}</span>
+    </h2>
+
+    <form method="POST"
+        action="{% url 'manage_program_educational_objectives' %}?school_id={{ selected_school_id }}&program_id={{ selected_program_id }}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <input type="hidden" name="school_id" value="{{ selected_school_id }}">
+        <input type="hidden" name="program_id" value="{{ selected_program_id }}">
+
+        <div class="add-form-grid">
+            <div class="form-group">
+                <label class="form-label" for="id_peo_code">PEO Code *</label>
+                <input type="text" id="id_peo_code" name="peo_code" class="form-control"
+                    placeholder="e.g. PEO1" maxlength="20" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_peo_description">Description *</label>
+                <textarea id="id_peo_description" name="peo_description" class="form-control"
+                    rows="2" placeholder="Describe this program educational objective..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_peo_order">Order</label>
+                <input type="number" id="id_peo_order" name="peo_order" class="form-control"
+                    value="0" min="0" placeholder="0">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Add PEO</button>
+        </div>
+    </form>
+</div>
+
+<!-- STEP 3: Existing PEOs -->
+<div class="peo-card">
+    <h2 class="peo-card-title">
+        📋 Existing Program Educational Objectives
+        {% if existing_peos %}
+        <span style="background:#d1fae5;color:#065f46;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #a7f3d0;">
+            {{ existing_peos|length }} PEO(s)
+        </span>
+        {% endif %}
+    </h2>
+
+    {% if existing_peos %}
+    <div style="overflow-x:auto;">
+        <table class="peo-table" id="peo-table">
+            <thead>
+                <tr>
+                    <th style="width:110px">Code</th>
+                    <th>Description</th>
+                    <th style="width:80px;text-align:center;">Order</th>
+                    <th style="width:160px;text-align:center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for peo in existing_peos %}
+                <tr>
+                    <td><span class="peo-code-badge">{{ peo.code }}</span></td>
+                    <td>{{ peo.description }}</td>
+                    <td style="text-align:center;color:#94a3b8;font-weight:600;">{{ peo.order }}</td>
+                    <td>
+                        <div class="action-btns" style="justify-content:center;">
+                            <a href="{% url 'edit_program_educational_objective' peo.id %}"
+                                class="btn btn-warning">✏ Edit</a>
+                            <form method="POST"
+                                action="{% url 'delete_program_educational_objective' peo.id %}"
+                                onsubmit="return confirm('Delete PEO {{ peo.code }}? This cannot be undone.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">🗑 Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <p>No Program Educational Objectives defined for <strong>{{ selected_program.name }}</strong> yet.<br>Use the form above to add the first one.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% elif selected_school_id %}
+<!-- School selected but program not yet selected -->
+<div class="info-banner">
+    ℹ️ Please select a <strong>Program</strong> from the dropdown above and click <strong>Apply</strong> to manage its Program Educational Objectives.
+</div>
+
+{% else %}
+<!-- Nothing selected yet -->
+<div class="info-banner">
+    ℹ️ Select a <strong>School</strong> first. Then select a <strong>Program</strong> to view and manage its Program Educational Objectives.
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+    const PROGRAMS_API_URL = "{% url 'get_programs' %}";
+
+    function onSchoolChange(schoolSelect) {
+        const schoolId = schoolSelect.value;
+        const programSelect = document.getElementById('id_program');
+        const applyBtn = document.getElementById('apply-btn');
+
+        programSelect.innerHTML = '<option value="">— Select Program —</option>';
+
+        if (!schoolId) {
+            programSelect.disabled = true;
+            applyBtn.disabled = true;
+            applyBtn.style.opacity = '0.5';
+            applyBtn.style.cursor = 'not-allowed';
+            return;
+        }
+
+        fetch(`${PROGRAMS_API_URL}?school_id=${schoolId}`)
+            .then(res => res.json())
+            .then(data => {
+                data.programs.forEach(prog => {
+                    const opt = document.createElement('option');
+                    opt.value = prog.id;
+                    opt.textContent = prog.name;
+                    programSelect.appendChild(opt);
+                });
+                programSelect.disabled = false;
+                applyBtn.disabled = false;
+                applyBtn.style.opacity = '1';
+                applyBtn.style.cursor = 'pointer';
+            })
+            .catch(err => {
+                console.error('Error fetching programs:', err);
+                programSelect.disabled = true;
+            });
+    }
+
+    // On page load: restore enable states when selections come from GET params
+    document.addEventListener('DOMContentLoaded', () => {
+        const schoolSelect = document.getElementById('id_school');
+        const programSelect = document.getElementById('id_program');
+
+        if (schoolSelect.value) {
+            programSelect.disabled = false;
+            const applyBtn = document.getElementById('apply-btn');
+            applyBtn.disabled = false;
+            applyBtn.style.opacity = '1';
+            applyBtn.style.cursor = 'pointer';
+        }
+    });
+</script>
+{% endblock %}

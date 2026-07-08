@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block extra_head %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/dropdowns.js"></script>
+<!-- jQuery and DataTables JS -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#facultyTable').DataTable({
+            scrollY: '400px',        // Vertical scroll
+            scrollX: true,           // Horizontal scroll
+            scrollCollapse: true,
+            paging: true,            // Pagination
+            searching: true,         // Live search
+            lengthChange: true,      // Entries per page dropdown
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            pageLength: 10,
+            columnDefs: [
+                { orderable: false, targets: 5 } // Disable sorting on 'Actions' column
+            ]
+        });
+
+        // --- Cascading Dropdowns for Create Subject Modal ---
+        // Duplicate logic here to avoid ID conflicts with Faculty Modal
+        var currentSemesters = [];
+
+        $('#id_sub_school').change(function () {
+            var schoolId = $(this).val();
+            var $programSelect = $('#id_sub_program');
+            var $branchSelect = $('#id_sub_branch');
+            var $semesterSelect = $('#id_sub_semester');
+
+            $programSelect.html('<option value="">Loading...</option>');
+            $branchSelect.html('<option value="">Select Program First</option>');
+            $semesterSelect.html('<option value="">Select Branch First</option>');
+            currentSemesters = [];
+
+            if (schoolId) {
+                $.ajax({
+                    url: "{% url 'get_programs' %}",
+                    data: { 'school_id': schoolId },
+                    success: function (data) {
+                        $programSelect.html('<option value="">Select Program</option>');
+                        $.each(data.programs, function (index, item) {
+                            $programSelect.append($('<option>', {
+                                value: item.id,
+                                text: item.name
+                            }));
+                        });
+                    }
+                });
+            } else {
+                $programSelect.html('<option value="">Select School First</option>');
+            }
+        });
+
+        $('#id_sub_program').change(function () {
+            var programId = $(this).val();
+            var $branchSelect = $('#id_sub_branch');
+            var $semesterSelect = $('#id_sub_semester');
+
+            $branchSelect.html('<option value="">Loading...</option>');
+            $semesterSelect.html('<option value="">Select Branch First</option>');
+            currentSemesters = [];
+
+            if (programId) {
+                $.ajax({
+                    url: "{% url 'get_branches' %}",
+                    data: { 'program_id': programId },
+                    success: function (data) {
+                        $branchSelect.html('<option value="">Select Branch</option>');
+                        $.each(data.branches, function (index, item) {
+                            $branchSelect.append($('<option>', {
+                                value: item.id,
+                                text: item.name
+                            }));
+                        });
+                        // Save the semesters for this program
+                        currentSemesters = data.semesters;
+                    }
+                });
+            } else {
+                $branchSelect.html('<option value="">Select Program First</option>');
+            }
+        });
+
+        $('#id_sub_branch').change(function () {
+            var branchId = $(this).val();
+            var $semesterSelect = $('#id_sub_semester');
+
+            $semesterSelect.html('<option value="">Select Semester</option>');
+            if (branchId && currentSemesters && currentSemesters.length > 0) {
+                $.each(currentSemesters, function (index, item) {
+                    $semesterSelect.append($('<option>', {
+                        value: item.value,
+                        text: item.display
+                    }));
+                });
+            } else if (branchId) {
+                $semesterSelect.html('<option value="">No Semesters Available</option>');
+            } else {
+                $semesterSelect.html('<option value="">Select Branch First</option>');
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-head"
+    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1 class="section-title">Admin Dashboard</h1>
+</div>
+
+<!-- Action Cards (Only 2 as requested) -->
+<div class="dashboard-grid">
+    <div class="action-card" id="btn-create-faculty">
+        <h3 class="card-title">+ Create Faculty</h3>
+        <p class="card-desc">Register a new faculty member.</p>
+    </div>
+    <div class="action-card" id="btn-create-subject">
+        <h3 class="card-title">+ Create Subject</h3>
+        <p class="card-desc">Add a new subject.</p>
+    </div>
+    <a href="{% url 'manage_semester_structure' %}" class="action-card" style="text-decoration: none; color: inherit;">
+        <h3 class="card-title">Download PDF</h3>
+        <p class="card-desc">Assign subjects to semesters.</p>
+    </a>
+    <a href="{% url 'manage_program_outcomes' %}" class="action-card" style="text-decoration: none; color: inherit;">
+        <h3 class="card-title">+ Manage PO</h3>
+        <p class="card-desc">Create and manage Program Outcomes.</p>
+    </a>
+    <a href="{% url 'manage_program_specific_outcomes' %}" class="action-card" style="text-decoration: none; color: inherit;">
+        <h3 class="card-title">+ Manage PSO</h3>
+        <p class="card-desc">Create and manage Program Specific Outcomes.</p>
+    </a>
+    <a href="{% url 'manage_program_educational_objectives' %}" class="action-card" style="text-decoration: none; color: inherit;">
+        <h3 class="card-title">+ Manage PEO</h3>
+        <p class="card-desc">Create and manage Program Educational Objectives.</p>
+    </a>
+
+</div>
+
+<!-- Faculty Data Table -->
+<div class="table-container">
+    <div class="header-row">
+        <h3>Faculty Directory</h3>
+        <div
+            style="background-color: #fff3cd; color: #856404; padding: 0.75rem; border-radius: 4px; border: 1px solid #ffeeba; font-size: 0.9rem; margin-bottom: 1rem;">
+            <strong>Note:</strong> Subjects are master data. Deleting faculty or syllabus does not remove subjects. Use
+            the specific "Delete Subject" button to remove them globally.
+        </div>
+        <!-- Manual search removed in favor of DataTables Live Search -->
+    </div>
+    <table id="facultyTable" class="display nowrap" style="width:100%">
+        <thead>
+            <tr>
+                <th>Faculty ID</th>
+                <th>Full Name</th>
+                <th>School</th>
+                <th>Program</th>
+                <th>Branch</th>
+                <th>Subjects</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in faculties %}
+            <tr>
+                <td>{{ f.faculty_id }}</td>
+                <td>{{ f.full_name }}</td>
+                <td>{{ f.school.code }}</td>
+                <td>{{ f.program.name }}</td>
+                <td>{{ f.branch.name }}</td>
+                <td>
+                    {% for s in f.subjects.all %}
+                    {% with syl=s.safe_syllabus %}
+                    <div
+                        style="margin-bottom: 6px; display: flex; align-items: center; gap: 6px; background: #f8fafc; padding: 4px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                        <span style="font-weight: bold; font-size: 13px;">{{ s.course_code }}</span>
+                        <!-- DELETE SUBJECT BUTTON -->
+                        <form method="POST" action="{% url 'delete_subject' s.id %}"
+                            onsubmit="return confirm('WARNING: You are about to delete the MASTER SUBJECT: {{ s.course_name }} ({{ s.course_code }}).\n\nThis will globally remove:\n- The Subject itself\n- The Syllabus (if any)\n- All Faculty assignments for this subject\n\nAre you ABSOLUTELY SURE?');"
+                            style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" title="Delete Global Subject"
+                                style="border: none; background: none; cursor: pointer; font-size: 12px; color: #b91c1c; padding: 0 4px; font-weight: bold;">
+                                🗑️
+                            </button>
+                        </form>
+                        <span style="color: #cbd5e1;">|</span>
+                        {% if syl %}
+                        <span style="font-size: 11px; color: #64748b;">({{ syl.get_status_display }})</span>
+
+                        {% if syl.pdf_file %}
+                        <a href="{{ syl.pdf_file.url }}" target="_blank" title="Download PDF"
+                            style="text-decoration: none; font-size: 14px;">
+                            📄
+                        </a>
+                        {% endif %}
+
+                        <form method="POST" action="{% url 'delete_syllabus' syl.id %}"
+                            onsubmit="return confirm('Delete syllabus for {{ s.course_code }}? This cannot be undone.');"
+                            style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" title="Delete Syllabus"
+                                style="border: none; background: none; cursor: pointer; font-size: 12px; color: #ef4444; padding: 0 4px;">
+                                ❌
+                            </button>
+                        </form>
+                        {% else %}
+                        <span style="font-size: 11px; color: #94a3b8; font-style: italic;">(No Syllabus)</span>
+                        {% endif %}
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                        <a href="{% url 'edit_faculty' f.id %}" class="btn btn-sm btn-outline"
+                            style="padding: 2px 8px; font-size: 12px; height: auto;">Edit</a>
+                        <form method="POST" action="{% url 'delete_faculty' f.id %}"
+                            onsubmit="return confirm('Are you sure you want to delete {{ f.full_name }}?');"
+                            style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                style="padding: 2px 8px; font-size: 12px; background-color: #dc2626; color: white; border: none; cursor: pointer;">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+
+<!-- Create Faculty Modal -->
+<div class="modal" id="modal-faculty">
+    <div class="modal-content">
+        <button class="close-modal">&times;</button>
+        <h2 style="margin-bottom: 1.5rem;">Create Faculty</h2>
+        <form method="POST" action="{% url 'create_faculty' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" name="full_name" class="form-control" required>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label class="form-label">Faculty ID (Username)</label>
+                    <input type="text" name="faculty_id" class="form-control" required>
+                </div>
+                <div>
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div>
+                    <label class="form-label">Mobile</label>
+                    <input type="text" name="mobile" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">School</label>
+                <select name="school" id="id_school" class="form-control" required>
+                    <option value="">Select School</option>
+                    {% for school in schools %}
+                    <option value="{{ school.id }}">{{ school.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Create Member</button>
+        </form>
+    </div>
+</div>
+
+<!-- Create Subject Modal -->
+<div class="modal" id="modal-subject">
+    <div class="modal-content">
+        <button class="close-modal">&times;</button>
+        <h2 style="margin-bottom: 1.5rem;">Create Subject</h2>
+        <form method="POST" action="{% url 'create_subject' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Course Name</label>
+                <input type="text" name="course_name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Course Code</label>
+                <input type="text" name="course_code" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Academic Year (Mandatory)</label>
+                <input type="text" name="academic_year" class="form-control" placeholder="YYYY-YY (e.g., 2025-26)"
+                    pattern="^\d{4}-\d{2}$" title="Format: YYYY-YY (e.g., 2025-26)" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">School</label>
+                <select name="school" id="id_sub_school" class="form-control" required>
+                    <option value="">Select School</option>
+                    {% for school in schools %}
+                    <option value="{{ school.id }}">{{ school.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Program</label>
+                <select name="program" id="id_sub_program" class="form-control" required>
+                    <option value="">Select School First</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Branch</label>
+                <select name="branch" id="id_sub_branch" class="form-control" required>
+                    <option value="">Select Program First</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Semester</label>
+                <select name="semester" id="id_sub_semester" class="form-control" required>
+                    <option value="">Select Branch First</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Sort Description</label>
+                <textarea name="description" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Assign to Faculty (Hold Ctrl to select multiple)</label>
+                <select name="faculties" class="form-control" multiple required style="height: 120px;">
+                    {% for f in faculties %}
+                    <option value="{{ f.id }}">{{ f.full_name }} ({{ f.faculty_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Create Subject</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

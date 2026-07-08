@@ -1,0 +1,330 @@
+:root {
+    --gsfc-yellow: #F2A900;
+    --gsfc-blue: #0B3C5D;
+    --gsfc-blue-dark: #082A3F;
+    --gsfc-offwhite: #F7F8FA;
+    --gsfc-card: #FFFFFF;
+    --gsfc-border: #D1D5DB;
+    --gsfc-success: #2E8B57;
+    --gsfc-warning: #F59E0B;
+    --gsfc-text: #1F2937;
+    --gsfc-text-light: #6B7280;
+
+    --primary: var(--gsfc-blue);
+    --primary-dark: var(--gsfc-blue-dark);
+    --secondary: var(--gsfc-yellow);
+    --background: var(--gsfc-offwhite);
+    --surface: var(--gsfc-card);
+    --text: var(--gsfc-text);
+    --text-light: var(--gsfc-text-light);
+    --border: var(--gsfc-border);
+    --danger: #ef4444;
+    --success: var(--gsfc-success);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--background);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Navbar */
+.navbar {
+    background-color: var(--gsfc-yellow);
+    border-bottom: 4px solid var(--gsfc-blue);
+    /* Stronger official border */
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand {
+    font-weight: 800;
+    /* Bolder */
+    font-size: 1.5rem;
+    color: var(--gsfc-blue);
+    text-decoration: none;
+    text-transform: uppercase;
+    /* Official feel */
+    letter-spacing: 0.5px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.user-greeting {
+    font-weight: 600;
+    color: var(--gsfc-blue-dark);
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    /* Slightly sharper for official look */
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--gsfc-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--gsfc-blue-dark);
+}
+
+.btn-outline {
+    border: 2px solid var(--gsfc-blue);
+    /* Thicker border */
+    background: transparent;
+    color: var(--gsfc-blue);
+}
+
+.btn-outline:hover {
+    background-color: var(--gsfc-blue);
+    color: white;
+}
+
+/* Auth Cards */
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 5px solid var(--gsfc-blue);
+    /* Official GSFC Card Style */
+    border-radius: 0.5rem;
+    padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--gsfc-blue-dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--gsfc-border);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    background-color: #f9fafb;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--gsfc-blue);
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(11, 60, 93, 0.1);
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.action-card {
+    background: var(--surface);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--gsfc-yellow);
+    /* GSFC Accent */
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--gsfc-blue);
+}
+
+.card-desc {
+    color: var(--gsfc-text);
+    font-size: 0.875rem;
+}
+
+/* Tables */
+.table-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: var(--gsfc-blue);
+    /* Blue Header Bar */
+    color: white;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+.header-row h3 {
+    color: white;
+    /* Ensure title is white on blue */
+    margin: 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+th,
+td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    background-color: var(--gsfc-blue);
+    font-weight: 600;
+    color: white;
+    /* White text on Blue header */
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+/* Modals */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    overflow-y: auto;
+}
+
+.modal.active {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 4rem;
+}
+
+.modal-content {
+    background: var(--surface);
+    width: 100%;
+    max-width: 600px;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.close-modal {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--gsfc-blue);
+}
+
+.btn-secondary {
+    background-color: var(--gsfc-yellow);
+    color: var(--gsfc-blue-dark);
+}
+
+.btn-secondary:hover {
+    background-color: #d97706;
+    /* Darker yellow/amber */
+    color: white;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.alert-success {
+    background-color: #dcfce7;
+    color: #166534;
+}
