@@ -198,6 +198,14 @@ window.debugLog("Debug Console Initialized");
                         </select>
                     </div>
                     <div class="sb-form-group">
+                        <label class="sb-label">Course Focus</label>
+                        <select class="sb-select" name="course_focus">
+                            <option value="Employability" {% if saved_syllabus.course_focus == 'Employability' %}selected{% endif %}>Employability</option>
+                            <option value="Entrepreneurship" {% if saved_syllabus.course_focus == 'Entrepreneurship' %}selected{% endif %}>Entrepreneurship</option>
+                            <option value="Skill Development" {% if saved_syllabus.course_focus == 'Skill Development' %}selected{% endif %}>Skill Development</option>
+                        </select>
+                    </div>
+                    <div class="sb-form-group">
                         <label class="sb-label">Revision / Approval Date</label>
                         <input type="date" class="sb-input" name="approval_date">
                     </div>
@@ -330,7 +338,7 @@ window.debugLog("Debug Console Initialized");
                 <button type="button" class="sb-btn sb-btn-add" onclick="addCO()">➕ Add CO</button>
 
                 <div style="margin-top: 2rem;">
-                    <h4 style="color: var(--sb-primary);">CO-PO Mapping & PSO</h4>
+                    <h4 style="color: var(--sb-primary);">CO-PO Mapping</h4>
                     <div class="sb-form-group">
                         <p class="text-sm text-gray-600 mb-2">Use 0-3 scale. (3=High, 2=Medium, 1=Low, 0=None)</p>
                         <div id="mapping_matrix_container" style="overflow-x: auto;">
@@ -601,8 +609,7 @@ window.debugLog("Debug Console Initialized");
         let html = '<table class="sb-preview-table" style="width:100%"><thead><tr><th>CO</th>';
         // PO headers
         for (let i = 1; i <= 12; i++) html += `<th>PO${i}</th>`;
-        // PSO headers
-        html += `<th>PSO1</th><th>PSO2</th></tr></thead><tbody>`;
+        html += `</tr></thead><tbody>`;
 
         coItems.forEach((item, idx) => {
             const coNum = idx + 1;
@@ -611,10 +618,6 @@ window.debugLog("Debug Console Initialized");
                 const name = `map_co${coNum}_po${i}`;
                 html += `<td><input type="number" min="0" max="3" class="sb-input" style="padding:4px; width:40px;" name="${name}" value=""></td>`;
             }
-            const pso1 = `map_co${coNum}_pso1`;
-            const pso2 = `map_co${coNum}_pso2`;
-            html += `<td><input type="number" min="0" max="3" class="sb-input" style="padding:4px; width:40px;" name="${pso1}" value=""></td>`;
-            html += `<td><input type="number" min="0" max="3" class="sb-input" style="padding:4px; width:40px;" name="${pso2}" value=""></td>`;
             html += `</tr>`;
         });
         html += '</tbody></table>';
@@ -800,7 +803,7 @@ window.debugLog("Debug Console Initialized");
                 draftData.outcomes.forEach((co, idx) => {
                     const rowIdx = idx + 1;
                     const mapping = co.mapping || {};
-                    const poNames = ['po1', 'po2', 'po3', 'po4', 'po5', 'po6', 'po7', 'po8', 'po9', 'po10', 'po11', 'po12', 'pso1', 'pso2'];
+                    const poNames = ['po1', 'po2', 'po3', 'po4', 'po5', 'po6', 'po7', 'po8', 'po9', 'po10', 'po11', 'po12'];
                     poNames.forEach(po => {
                         const inp = document.querySelector(`input[name="map_co${rowIdx}_${po}"]`);
                         if (inp) inp.value = mapping[po] || 0;
@@ -910,6 +913,7 @@ window.debugLog("Debug Console Initialized");
             'input[name^="course_name"]',
             'select[name="category"]',
             'select[name="focus"]',
+            'select[name="course_focus"]',
             'input[name="approval_date"]',
             'textarea[name="rationale"]',
             

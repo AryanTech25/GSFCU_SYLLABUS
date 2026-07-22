@@ -234,7 +234,7 @@ def syllabus_builder(request):
             req_fields = [
                 'hours_lecture', 'hours_practical', 'hours_tutorial', 
                 'credit_lecture', 'credit_practical', 'credit_tutorial',
-                'prerequisites', 'category', 'focus', 'rationale', 'approval_date'
+                'prerequisites', 'category', 'focus', 'course_focus', 'rationale', 'approval_date'
             ]
             for f in req_fields:
                 val = request.POST.get(f, '').strip()
@@ -367,8 +367,6 @@ def syllabus_builder(request):
                     mapping_dict = {}
                     for i in range(1, 13):
                         mapping_dict[f'po{i}'] = request.POST.get(f'map_co{idx}_po{i}', 0)
-                    mapping_dict['pso1'] = request.POST.get(f'map_co{idx}_pso1', 0)
-                    mapping_dict['pso2'] = request.POST.get(f'map_co{idx}_pso2', 0)
                     
                     draft_data['outcomes'].append({
                         'description': request.POST.get(k),
@@ -439,6 +437,7 @@ def syllabus_builder(request):
                      syllabus.prerequisites = request.POST.get("prerequisites", "")
                      syllabus.category = request.POST.get("category", "Core")
                      syllabus.focus = request.POST.get("focus", "Employability")
+                     syllabus.course_focus = request.POST.get("course_focus", "Employability")
                      
                      app_date = request.POST.get('approval_date')
                      if app_date:
@@ -512,7 +511,11 @@ def syllabus_builder(request):
                          
                          desc = request.POST.get(f'co_desc_{uid}')
                          if desc:
-                             co = CourseOutcome.objects.create(syllabus=syllabus, code=f"CO{co_idx}", description=desc)
+                             co = CourseOutcome.objects.create(
+                                 syllabus=syllabus,
+                                 code=f"CO{co_idx}",
+                                 description=desc
+                             )
                              
                              # Mapping
                              # Note: Frontend sends `map_co{idx}_po...` where idx matches the row number 1, 2, 3...
@@ -520,8 +523,6 @@ def syllabus_builder(request):
                              map_defaults = {}
                              for i in range(1, 13):
                                  map_defaults[f'po{i}'] = request.POST.get(f'map_co{co_idx}_po{i}') or 0
-                             map_defaults['pso1'] = request.POST.get(f'map_co{co_idx}_pso1') or 0
-                             map_defaults['pso2'] = request.POST.get(f'map_co{co_idx}_pso2') or 0
                              OutcomeMapping.objects.create(course_outcome=co, **map_defaults)
                              
                              co_idx += 1
@@ -853,8 +854,7 @@ def render_preview(request):
             po1=get(f'map_co{idx}_po1',0), po2=get(f'map_co{idx}_po2',0), po3=get(f'map_co{idx}_po3',0),
             po4=get(f'map_co{idx}_po4',0), po5=get(f'map_co{idx}_po5',0), po6=get(f'map_co{idx}_po6',0),
             po7=get(f'map_co{idx}_po7',0), po8=get(f'map_co{idx}_po8',0), po9=get(f'map_co{idx}_po9',0),
-            po10=get(f'map_co{idx}_po10',0), po11=get(f'map_co{idx}_po11',0), po12=get(f'map_co{idx}_po12',0),
-            pso1=get(f'map_co{idx}_pso1',0), pso2=get(f'map_co{idx}_pso2',0)
+            po10=get(f'map_co{idx}_po10',0), po11=get(f'map_co{idx}_po11',0), po12=get(f'map_co{idx}_po12',0)
         )
         cos.append(MockObj(code=f"CO{idx}", description=desc, mapping=mapping))
     mock_outcomes = MockObj(items=cos)
@@ -886,6 +886,7 @@ def render_preview(request):
         prerequisites=get('prerequisites'),
         category=get('category'),
         focus=get('focus'),
+        course_focus=get('course_focus'),
         rationale=get('rationale'),
         approval_date=get('approval_date') or timezone.now().date(),
         objectives=mock_objectives,
@@ -940,7 +941,7 @@ def render_preview(request):
         'academic_year': academic_year,
     }
     
-    html = render_to_string('pdf/syllabus_canonical.html', context)
+    html = render_to_string('pdf/syllabus_canonical_test.html', context)
     return HttpResponse(html)
 
 
@@ -1051,7 +1052,7 @@ def generate_pdf(request, syllabus_id):
         'academic_year': academic_year,
     }
     
-    html_string = render_to_string('pdf/syllabus_canonical.html', context)
+    html_string = render_to_string('pdf/syllabus_canonical_test.html', context)
     
     # Generate PDF
     from io import BytesIO
@@ -1213,7 +1214,7 @@ def generate_semester_pdf(request, semester_id):
         'academic_year': academic_year
     }
     
-    summary_html = render_to_string('pdf/semester_summary.html', summary_context)
+    summary_html = render_to_string('pdf/semester_summary_test.html', summary_context)
     
     def extract_body(html):
         m = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
@@ -1241,7 +1242,7 @@ def generate_semester_pdf(request, semester_id):
                 'semester_name': subject.semester if subject.semester else semester.semester_number,
                 'academic_year': academic_year
             }
-            sub_html = render_to_string('pdf/syllabus_canonical.html', ctx)
+            sub_html = render_to_string('pdf/syllabus_canonical_test.html', ctx)
             full_body += "<pdf:nextpage>"
             full_body += extract_body(sub_html)
             

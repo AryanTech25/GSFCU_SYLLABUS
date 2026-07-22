@@ -132,6 +132,11 @@ class Syllabus(models.Model):
         ('draft', 'Draft'),
         ('final', 'Final Submission'),
     ]
+    COURSE_FOCUS_CHOICES = [
+        ('Employability', 'Employability'),
+        ('Entrepreneurship', 'Entrepreneurship'),
+        ('Skill Development', 'Skill Development'),
+    ]
 
     subject = models.OneToOneField(Subject, on_delete=models.CASCADE, related_name='syllabus')
     faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, related_name='syllabi')
@@ -147,6 +152,7 @@ class Syllabus(models.Model):
     prerequisites = models.TextField(blank=True, null=True)
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='HS')
     focus = models.CharField(max_length=150, choices=FOCUS_CHOICES, default='HS', verbose_name="Course Category Title")
+    course_focus = models.CharField(max_length=50, choices=COURSE_FOCUS_CHOICES, default='Employability')
     
     approval_date = models.DateField(null=True, blank=True)
     rationale = models.TextField(blank=True, null=True)
