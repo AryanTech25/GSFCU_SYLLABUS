@@ -75,21 +75,24 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 15px;
+            table-layout: fixed;
         }
 
         th,
         td {
             border: 1px solid #000;
-            padding: 4px 6px;
+            padding: 4px 3px;
             vertical-align: middle;
             text-align: center;
-            font-size: 12pt;
+            font-size: 9pt;
         }
 
         th {
             font-weight: bold;
             background-color: #CCCCCC;
             color: #000;
+            white-space: normal;
+            word-break: break-word;
         }
 
         .left {
@@ -98,6 +101,11 @@
 
         .bold {
             font-weight: bold;
+        }
+
+        /* Row data cells use larger font than headers */
+        tbody td {
+            font-size: 10pt;
         }
     </style>
 </head>
@@ -128,31 +136,50 @@
             }}</h3>
     </div>
 
-    <table>
+    <table style="table-layout: fixed; width: 100%;">
+        <colgroup>
+            <col style="width: 3%;" />
+            <col style="width: 7%;" />
+            <col style="width: 17%;" />
+            <col style="width: 6%;" />
+            <col style="width: 7%;" />
+            <col style="width: 7%;" />
+            <col style="width: 5%;" />
+            <col style="width: 6%;" />
+            <col style="width: 7%;" />
+            <col style="width: 7%;" />
+            <col style="width: 5%;" />
+            <col style="width: 3.5%;" />
+            <col style="width: 3.5%;" />
+            <col style="width: 3.5%;" />
+            <col style="width: 4.5%;" />
+            <col style="width: 3.5%;" />
+            <col style="width: 4.5%;" />
+        </colgroup>
         <thead>
             <tr>
-                <th rowspan="2" style="width: 5%;">Sr. No</th>
-                <th rowspan="2" style="width: 10%;">Course Code</th>
-                <th rowspan="2" style="width: 25%;">Course Name</th>
-                <th colspan="4" style="width: 15%;">Teaching Scheme (Hrs/Week)</th>
-                <th colspan="4" style="width: 15%;">Teaching Credit</th>
-                <th colspan="6" style="width: 30%;">Evaluation Scheme (Marks)</th>
+                <th rowspan="2" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; vertical-align: middle;">Sr. No</th>
+                <th rowspan="2" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; vertical-align: middle;">Course Code</th>
+                <th rowspan="2" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; vertical-align: middle;">Course Name</th>
+                <th colspan="4" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold;">Teaching Scheme (Hrs/Week)</th>
+                <th colspan="4" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold;">Teaching Credit</th>
+                <th colspan="6" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold;">Evaluation Scheme (Marks)</th>
             </tr>
             <tr>
-                <th>L</th>
-                <th>P</th>
-                <th>T</th>
-                <th>Total</th>
-                <th>L</th>
-                <th>P</th>
-                <th>T</th>
-                <th>Total</th>
-                <th>Th MS</th>
-                <th>Th CEC</th>
-                <th>Th ES</th>
-                <th>Th Total</th>
-                <th>Prac</th>
-                <th>Total</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">LECTURE</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">PRACTICAL</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TUTORIAL</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TOTAL</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">LECTURE</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">PRACTICAL</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TUTORIAL</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TOTAL</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th MS</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th CEC</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th ES</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th Total</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Prac</th>
+                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Total</th>
             </tr>
         </thead>
         <tbody>
