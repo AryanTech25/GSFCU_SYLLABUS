@@ -941,7 +941,7 @@ def render_preview(request):
         'academic_year': academic_year,
     }
     
-    html = render_to_string('pdf/syllabus_canonical_test.html', context)
+    html = render_to_string('pdf/syllabus_canonical.html', context)
     return HttpResponse(html)
 
 
@@ -1052,7 +1052,7 @@ def generate_pdf(request, syllabus_id):
         'academic_year': academic_year,
     }
     
-    html_string = render_to_string('pdf/syllabus_canonical_test.html', context)
+    html_string = render_to_string('pdf/syllabus_canonical.html', context)
     
     # Generate PDF
     from io import BytesIO
@@ -1214,7 +1214,7 @@ def generate_semester_pdf(request, semester_id):
         'academic_year': academic_year
     }
     
-    summary_html = render_to_string('pdf/semester_summary_test.html', summary_context)
+    summary_html = render_to_string('pdf/semester_summary.html', summary_context)
     
     def extract_body(html):
         m = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
@@ -1242,7 +1242,7 @@ def generate_semester_pdf(request, semester_id):
                 'semester_name': subject.semester if subject.semester else semester.semester_number,
                 'academic_year': academic_year
             }
-            sub_html = render_to_string('pdf/syllabus_canonical_test.html', ctx)
+            sub_html = render_to_string('pdf/syllabus_canonical.html', ctx)
             full_body += "<pdf:nextpage>"
             full_body += extract_body(sub_html)
             
