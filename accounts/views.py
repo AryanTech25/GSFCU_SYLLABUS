@@ -1168,7 +1168,9 @@ def generate_semester_pdf(request, semester_id):
     for item in structure:
         subject = item.subject
         syllabus = getattr(subject, 'syllabus', None)
-        row = { 'sr_no': item.sequence, 'code': subject.course_code, 'name': subject.course_name }
+        _raw_sem = str(subject.semester) if hasattr(subject, 'semester') and subject.semester else ''
+        row = { 'sr_no': item.sequence, 'code': subject.course_code, 'name': subject.course_name,
+                'sem': _raw_sem.replace('Semester ', '').replace('semester ', '').strip() }
         if syllabus:
             row['L'] = syllabus.hours_lecture
             row['P'] = syllabus.hours_practical

@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <style>
         @page {
-            size: A4 landscape;
+            size: A4 portrait;
             margin: 1.5cm;
             margin-top: 4.5cm;
             margin-bottom: 2cm;
@@ -74,25 +74,34 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
             table-layout: fixed;
         }
 
         th,
         td {
             border: 1px solid #000;
-            padding: 4px 3px;
+            padding: 2px 3px;
             vertical-align: middle;
             text-align: center;
-            font-size: 9pt;
+            font-size: 8pt;
         }
 
         th {
             font-weight: bold;
-            background-color: #CCCCCC;
+            background-color: #d3d3d3;
             color: #000;
             white-space: normal;
             word-break: break-word;
+            font-size: 8pt;
+            padding: 3px 3px;
+        }
+
+        tr {
+            page-break-inside: avoid;
+        }
+
+        .table-section {
+            page-break-inside: avoid;
         }
 
         .left {
@@ -103,9 +112,9 @@
             font-weight: bold;
         }
 
-        /* Row data cells use larger font than headers */
+        /* Row data cells use standard font */
         tbody td {
-            font-size: 10pt;
+            font-size: 8pt;
         }
     </style>
 </head>
@@ -132,82 +141,114 @@
     </div>
 
     <div style="text-align: center; margin-bottom: 10px;">
-        <h3 style="text-transform: uppercase; margin: 0; text-decoration: underline;">SEMESTER SUMMARY: {{ semester_name
-            }}</h3>
+        <h3 style="text-transform: uppercase; margin: 0; text-decoration: underline;">SEMESTER SUMMARY: {{ semester_name }}</h3>
     </div>
 
-    <table style="table-layout: fixed; width: 100%;">
-        <colgroup>
-            <col style="width: 3%;" />
-            <col style="width: 7%;" />
-            <col style="width: 17%;" />
-            <col style="width: 6%;" />
-            <col style="width: 7%;" />
-            <col style="width: 7%;" />
-            <col style="width: 5%;" />
-            <col style="width: 6%;" />
-            <col style="width: 7%;" />
-            <col style="width: 7%;" />
-            <col style="width: 5%;" />
-            <col style="width: 3.5%;" />
-            <col style="width: 3.5%;" />
-            <col style="width: 3.5%;" />
-            <col style="width: 4.5%;" />
-            <col style="width: 3.5%;" />
-            <col style="width: 4.5%;" />
-        </colgroup>
-        <thead>
-            <tr>
-                <th rowspan="2" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; vertical-align: middle;">Sr. No</th>
-                <th rowspan="2" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; vertical-align: middle;">Course Code</th>
-                <th rowspan="2" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; vertical-align: middle;">Course Name</th>
-                <th colspan="4" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold;">Teaching Scheme (Hrs/Week)</th>
-                <th colspan="4" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold;">Teaching Credit</th>
-                <th colspan="6" style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold;">Evaluation Scheme (Marks)</th>
-            </tr>
-            <tr>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">LECTURE</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">PRACTICAL</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TUTORIAL</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TOTAL</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">LECTURE</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">PRACTICAL</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TUTORIAL</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">TOTAL</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th MS</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th CEC</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th ES</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Th Total</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Prac</th>
-                <th style="background-color: #CCCCCC; padding: 6px 8px; border: 1px solid #000; text-align: center; font-weight: bold; white-space: normal;">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in rows %}
-            <tr>
-                <td>{{ row.sr_no }}</td>
-                <td>{{ row.code }}</td>
-                <td class="left">{{ row.name }}</td>
+    <!-- Box 1: Teaching Scheme & Credit -->
+    <div class="table-section">
+        <div style="margin-bottom: 4px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">Teaching Scheme & Credit</div>
+        <table style="table-layout: fixed; width: 100%;">
+            <colgroup>
+                <!-- Box 1: 12 cols. Sr+Code+Name+Sem+L+P+T+Tot+L+P+T+Tot = 100% -->
+                <col style="width: 5%;" />    <!-- Sr No -->
+                <col style="width: 12%;" />   <!-- Course Code -->
+                <col style="width: 28%;" />   <!-- Course Name (fixed, wraps) -->
+                <col style="width: 4%;" />    <!-- Sem (numeral only, e.g. "V") -->
+                <col style="width: 6%;" />    <!-- TS: L -->
+                <col style="width: 6%;" />    <!-- TS: P -->
+                <col style="width: 6%;" />    <!-- TS: T -->
+                <col style="width: 8%;" />    <!-- TS: Total -->
+                <col style="width: 6%;" />    <!-- TC: L -->
+                <col style="width: 6%;" />    <!-- TC: P -->
+                <col style="width: 6%;" />    <!-- TC: T -->
+                <col style="width: 7%;" />    <!-- TC: Total -->
+            </colgroup>
+            <thead>
+                <tr>
+                    <th rowspan="2" style="vertical-align: middle;">Sr. No</th>
+                    <th rowspan="2" style="vertical-align: middle;">Course Code</th>
+                    <th rowspan="2" style="vertical-align: middle;">Course Name</th>
+                    <th rowspan="2" style="vertical-align: middle;">Sem</th>
+                    <th colspan="4">Teaching Scheme (Hrs/Week)</th>
+                    <th colspan="4">Teaching Credit</th>
+                </tr>
+                <tr>
+                    <th>L</th>
+                    <th>P</th>
+                    <th>T</th>
+                    <th>Total</th>
+                    <th>L</th>
+                    <th>P</th>
+                    <th>T</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.sr_no }}</td>
+                    <td>{{ row.code }}</td>
+                    <td class="left" style="padding-left: 5px;">{{ row.name }}</td>
+                    <td>{{ row.sem }}</td>
+                    <td>{{ row.L }}</td>
+                    <td>{{ row.P }}</td>
+                    <td>{{ row.T }}</td>
+                    <td class="bold">{{ row.hours_total }}</td>
+                    <td>{{ row.cL }}</td>
+                    <td>{{ row.cP }}</td>
+                    <td>{{ row.cT }}</td>
+                    <td class="bold">{{ row.credit_total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-                <td>{{ row.L }}</td>
-                <td>{{ row.P }}</td>
-                <td>{{ row.T }}</td>
-                <td class="bold">{{ row.hours_total }}</td>
-                <td>{{ row.cL }}</td>
-                <td>{{ row.cP }}</td>
-                <td>{{ row.cT }}</td>
-                <td class="bold">{{ row.credit_total }}</td>
-
-                <td>{{ row.mid }}</td>
-                <td>{{ row.cec }}</td>
-                <td>{{ row.end }}</td>
-                <td>{{ row.theory_total }}</td>
-                <td>{{ row.prac_marks }}</td>
-                <td class="bold">{{ row.grand_total }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- Box 2: Evaluation Scheme -->
+    <div class="table-section" style="margin-top: 12px;">
+        <div style="margin-bottom: 4px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">Evaluation Scheme</div>
+        <table style="table-layout: fixed; width: 100%;">
+            <colgroup>
+                <!-- Box 2: 9 cols. Sr+Code+Name+MS+CEC+ES+Theory+Prac+Grand = 100% -->
+                <col style="width: 5%;" />    <!-- Sr No -->
+                <col style="width: 12%;" />   <!-- Course Code -->
+                <col style="width: 26%;" />   <!-- Course Name (fixed, wraps) -->
+                <col style="width: 9.5%;" /> <!-- MS Marks -->
+                <col style="width: 9.5%;" /> <!-- CEC Marks -->
+                <col style="width: 9.5%;" /> <!-- ES Marks -->
+                <col style="width: 9.5%;" /> <!-- Theory Total -->
+                <col style="width: 9.5%;" /> <!-- Practical Marks -->
+                <col style="width: 9.5%;" /> <!-- Grand Total -->
+            </colgroup>
+            <thead>
+                <tr>
+                    <th style="vertical-align: middle;">Sr. No</th>
+                    <th style="vertical-align: middle;">Course Code</th>
+                    <th style="vertical-align: middle;">Course Name</th>
+                    <th>Theory: MS Marks</th>
+                    <th>Theory: CEC Marks</th>
+                    <th>Theory: ES Marks</th>
+                    <th>Theory Total</th>
+                    <th>Practical Marks</th>
+                    <th>Total Marks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.sr_no }}</td>
+                    <td>{{ row.code }}</td>
+                    <td class="left" style="padding-left: 5px;">{{ row.name }}</td>
+                    <td>{{ row.mid }}</td>
+                    <td>{{ row.cec }}</td>
+                    <td>{{ row.end }}</td>
+                    <td class="bold">{{ row.theory_total }}</td>
+                    <td>{{ row.prac_marks }}</td>
+                    <td class="bold">{{ row.grand_total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </body>
-
 </html>

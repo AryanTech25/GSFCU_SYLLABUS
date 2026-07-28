@@ -564,20 +564,20 @@ def _create_summary_pdf(school, program, branch_name, semester_val, qs, output_p
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, KeepTogether
     from reportlab.lib.units import inch
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from datetime import datetime
     import os
     from django.conf import settings
 
-    # Layout Constants
-    page_width, page_height = landscape(A4)
-    left_margin = 0.4 * inch
-    right_margin = 0.4 * inch
+    # Layout Constants — Portrait A4
+    page_width, page_height = A4
+    left_margin = 0.5 * inch
+    right_margin = 0.5 * inch
     available_width = page_width - left_margin - right_margin
 
-    doc = SimpleDocTemplate(output_path, pagesize=landscape(A4),
+    doc = SimpleDocTemplate(output_path, pagesize=A4,
                            topMargin=0.4*inch, bottomMargin=0.4*inch,
                            leftMargin=left_margin, rightMargin=right_margin)
     elements = []
@@ -631,17 +631,25 @@ def _create_summary_pdf(school, program, branch_name, semester_val, qs, output_p
     elements.append(Paragraph(f"Academic Year: {academic_year_display}", info_style))
     elements.append(Spacer(1, 0.15*inch))
 
-    # --- 17 COLUMN TABLE STRUCTURE ---
-    table_data = [
-        ['Sr.\nNo.', 'Course\nCode', 'Course Name', 'Teaching Scheme (Hours/Week)', '', '', '', 'Teaching Credit', '', '', '', 'Evaluation Scheme', '', '', '', '', ''],
-        ['', '', '', 'L', 'P', 'T', 'Total', 'L', 'P', 'T', 'Total', 'Theory:\nMS Marks', 'Theory:\nCEC Marks', 'Theory:\nES Marks', 'Theory\nMarks', 'Practical\nMarks', 'Total\nMarks']
+    # --- TWO-TABLE STRUCTURE ---
+    # Box 1: Sr No | Course Code | Course Name | Sem | TS: L P T Total | TC: L P T Total
+    table_data_1 = [
+        ['Sr.\nNo.', 'Course\nCode', 'Course Name', 'Sem', 'Teaching Scheme (Hours/Week)', '', '', '', 'Teaching Credit', '', '', ''],
+        ['', '', '', '', 'L', 'P', 'T', 'Total', 'L', 'P', 'T', 'Total']
+    ]
+    
+    # Box 2: Sr No | Course Code | Course Name | MS | CEC | ES | Theory Total | Prac | Grand
+    table_data_2 = [
+        ['Sr.\nNo.', 'Course\nCode', 'Course Name', 'Theory:\nMS Marks', 'Theory:\nCEC Marks', 'Theory:\nES Marks', 'Theory\nMarks', 'Practical\nMarks', 'Total\nMarks']
     ]
 
-    # Define style for wrapping course names
+    # Define style for wrapping course names with 0 margin/space
     course_name_style = styles['Normal'].clone('course_name_style')
     course_name_style.fontSize = 8
     course_name_style.leading = 10
     course_name_style.alignment = TA_LEFT
+    course_name_style.spaceBefore = 0
+    course_name_style.spaceAfter = 0
 
     for idx, item in enumerate(qs, 1):
         subject = item.subject
@@ -668,66 +676,158 @@ def _create_summary_pdf(school, program, branch_name, semester_val, qs, output_p
             grand_total = theory_total + prac_total
         
         # Use Paragraph to support multi-line wrapping and auto-height
-        course_name_para = Paragraph(subject.course_name, course_name_style)
+        course_name_para_1 = Paragraph(subject.course_name, course_name_style)
+        course_name_para_2 = Paragraph(subject.course_name, course_name_style)
         
-        table_data.append([
-            str(idx), subject.course_code, course_name_para,
+        # Strip "Semester " prefix so the Sem column only shows the numeral (e.g. "V", "III")
+        raw_sem = str(subject.semester) if hasattr(subject, 'semester') else ''
+        sem_val = raw_sem.replace('Semester ', '').replace('semester ', '').strip()
+        table_data_1.append([
+            str(idx), subject.course_code, course_name_para_1,
+            sem_val,
             str(l), str(p), str(t), str(ts_total),
-            str(cl), str(cp), str(ct), str(tc_total),
+            str(cl), str(cp), str(ct), str(tc_total)
+        ])
+        
+        table_data_2.append([
+            str(idx), subject.course_code, course_name_para_2,
             str(ms), str(cec), str(es), str(theory_total), str(prac_total), str(grand_total)
         ])
 
-    # Optimized Column Width Distribution (Total sum must fit available_width)
-    col_widths = [
-        0.35 * inch,  # Sr No
-        0.90 * inch,  # Code
-        2.20 * inch,  # Course Name (Scalable)
-        0.52 * inch, 0.52 * inch, 0.52 * inch, 0.58 * inch, # TS
-        0.45 * inch, 0.45 * inch, 0.45 * inch, 0.52 * inch, # TC
-        0.65 * inch, 0.65 * inch, 0.65 * inch, 0.65 * inch, 0.65 * inch, 0.85 * inch # Eval
+    # --- Fixed portrait-width column distribution ---
+    # A4 portrait available ≈ 7.27 inch (8.27 - 0.5 - 0.5 margins).
+    # All columns are FIXED so Course Name never auto-expands beyond ~26%.
+    #
+    # Box 1: 12 cols — Sr No | Code | Name | Sem | L | P | T | Tot | L | P | T | Tot
+    #   Sem is now 0.28" (just wide enough for a Roman numeral like "VIII"), saving
+    #   0.14" vs the old 0.42", which goes directly to Course Name.
+    #   0.36 + 0.88 + Name + 0.28 + (0.44×6) + (0.55×2) = available_width
+    #   fixed_sum_excl_name = 0.36+0.88+0.28+2.64+1.10 = 5.26 → Name ≈ 2.01"
+    fixed_excl_name_1 = (
+        0.36 + 0.88 +              # Sr No, Code
+        0.28 +                     # Sem (narrow — numeral only)
+        0.44 + 0.44 + 0.44 + 0.55 +  # TS: L, P, T, Total
+        0.44 + 0.44 + 0.44 + 0.55    # TC: L, P, T, Total
+    ) * inch
+    col_widths_1 = [
+        0.36 * inch,   # Sr No
+        0.88 * inch,   # Course Code
+        available_width - fixed_excl_name_1,  # Course Name (~28%, wraps)
+        0.28 * inch,   # Sem (numeral only, e.g. "V")
+        0.44 * inch, 0.44 * inch, 0.44 * inch, 0.55 * inch,  # TS: L, P, T, Total
+        0.44 * inch, 0.44 * inch, 0.44 * inch, 0.55 * inch,  # TC: L, P, T, Total
     ]
-    
-    current_total = sum(col_widths)
-    diff = available_width - current_total
-    col_widths[2] += diff
 
-    table = Table(table_data, colWidths=col_widths, repeatRows=2)
+    # Box 2: 9 cols — Sr No | Code | Name | MS | CEC | ES | Theory | Prac | Grand
+    #   0.36 + 0.88 + Name + (0.68×6) = available_width
+    #   fixed_sum_excl_name = 0.36+0.88+4.08 = 5.32 → Name ≈ 1.95"
+    fixed_excl_name_2 = (
+        0.36 + 0.88 +              # Sr No, Code
+        0.68 + 0.68 + 0.68 +      # MS, CEC, ES Marks
+        0.68 + 0.68 + 0.68        # Theory Total, Practical, Grand Total
+    ) * inch
+    col_widths_2 = [
+        0.36 * inch,   # Sr No
+        0.88 * inch,   # Course Code
+        available_width - fixed_excl_name_2,  # Course Name (~26%, wraps)
+        0.68 * inch,   # MS Marks
+        0.68 * inch,   # CEC Marks
+        0.68 * inch,   # ES Marks
+        0.68 * inch,   # Theory Total
+        0.68 * inch,   # Practical Marks
+        0.68 * inch,   # Grand Total
+    ]
+
+    table_1 = Table(table_data_1, colWidths=col_widths_1, repeatRows=2)
+    table_2 = Table(table_data_2, colWidths=col_widths_2, repeatRows=1)
     
-    table_style = [
+    table_style_1 = [
         # --- BASE STYLE ---
         ('GRID', (0,0), (-1,-1), 0.5, colors.black),
         ('FONTSIZE', (0,0), (-1,-1), 8),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 2),
+        ('RIGHTPADDING', (0,0), (-1,-1), 2),
         
         # --- ACADEMIC HEADER STYLE (MATCHING SYLLABUS PAGES) ---
         ('BACKGROUND', (0,0), (-1,1), colors.HexColor('#d3d3d3')), # Official Grey
         ('TEXTCOLOR', (0,0), (-1,1), colors.black),
         ('FONTNAME', (0,0), (-1,1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,1), 8.5),
-        ('TOPPADDING', (0,0), (-1,1), 5),
-        ('BOTTOMPADDING', (0,0), (-1,1), 5),
+        ('FONTSIZE', (0,0), (-1,1), 8),
+        ('TOPPADDING', (0,0), (-1,1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,1), 3),
 
         # --- DATA ROW STYLE ---
         ('BACKGROUND', (0, 2), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 2), (-1, -1), colors.black),
 
-        # --- HEADER SPANNING ---
-        ('SPAN', (0,0), (0,1)),
-        ('SPAN', (1,0), (1,1)),
-        ('SPAN', (2,0), (2,1)),
-        ('SPAN', (3,0), (6,0)),
-        ('SPAN', (7,0), (10,0)),
-        ('SPAN', (11,0), (16,0)),
-        
+        # --- HEADER SPANNING (12-col: Sr|Code|Name|Sem|L|P|T|Tot|L|P|T|Tot) ---
+        ('SPAN', (0,0), (0,1)),   # Sr No spans 2 rows
+        ('SPAN', (1,0), (1,1)),   # Course Code spans 2 rows
+        ('SPAN', (2,0), (2,1)),   # Course Name spans 2 rows
+        ('SPAN', (3,0), (3,1)),   # Sem spans 2 rows
+        ('SPAN', (4,0), (7,0)),   # Teaching Scheme group header
+        ('SPAN', (8,0), (11,0)),  # Teaching Credit group header
+
         ('ALIGN', (2, 2), (2, -1), 'LEFT'),
-        ('LEFTPADDING', (2, 2), (2, -1), 6),
+        ('LEFTPADDING', (2, 2), (2, -1), 4),
     ]
+    table_1.setStyle(TableStyle(table_style_1))
+
+    table_style_2 = [
+        # --- BASE STYLE ---
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 2),
+        ('RIGHTPADDING', (0,0), (-1,-1), 2),
+        
+        # --- ACADEMIC HEADER STYLE ---
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#d3d3d3')), # Official Grey
+        ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 8),
+        ('TOPPADDING', (0,0), (-1,0), 3),
+        ('BOTTOMPADDING', (0,0), (-1,0), 3),
+
+        # --- DATA ROW STYLE ---
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+
+        ('ALIGN', (2, 1), (2, -1), 'LEFT'),
+        ('LEFTPADDING', (2, 1), (2, -1), 4),
+    ]
+    table_2.setStyle(TableStyle(table_style_2))
+
+    section_label_style = styles['Normal'].clone('section_label_style')
+    section_label_style.fontSize = 10
+    section_label_style.alignment = TA_LEFT
+    section_label_style.fontName = 'Helvetica-Bold'
+    section_label_style.leading = 12
+    section_label_style.textColor = colors.black
+    section_label_style.spaceBefore = 0
+    section_label_style.spaceAfter = 0
+
+    # Append Box 1 (Teaching Scheme & Credit) wrapped in KeepTogether to prevent orphans
+    elements.append(KeepTogether([
+        Paragraph("Teaching Scheme & Credit", section_label_style),
+        Spacer(1, 0.04*inch),
+        table_1
+    ]))
     
-    table.setStyle(TableStyle(table_style))
-    elements.append(table)
+    # Append Box 2 (Evaluation Scheme) wrapped in KeepTogether to prevent orphans
+    elements.append(Spacer(1, 0.12*inch))
+    elements.append(KeepTogether([
+        Paragraph("Evaluation Scheme", section_label_style),
+        Spacer(1, 0.04*inch),
+        table_2
+    ]))
 
     # Footer - Compact
     elements.append(Spacer(1, 0.1*inch))
