@@ -1,4 +1,6 @@
+{% load custom_filters %}
 <!DOCTYPE html>
+
 <html>
 
 <head>
@@ -384,10 +386,10 @@
             <td>{{ syllabus.approval_date|date:"d/m/Y" }}</td>
         </tr>
         <tr>
-            <th>Course Objectives</th>
-            <td>
-                <div>To enable the student to:</div>
-                <ol style="margin-top: 5px; margin-bottom: 5px;">
+            <th style="width: 25%;">Course Objectives (As per Blooms' Taxonomy)</th>
+            <td style="width: 75%;">
+                To enable the student to:
+                <ol>
                     {% if syllabus.objectives.all|length < 3 or "Understand the core aim" in syllabus.objectives.all.0.text or "Understand the core aim" in syllabus.objectives.all.1.text or "Understand the core aim" in syllabus.objectives.all.2.text %}
                         <li>Understand the core principles, design, and architecture of modern software systems.</li>
                         <li>Analyze and apply fundamental algorithms and data structures to solve complex computational problems.</li>
@@ -611,7 +613,70 @@
         </tbody>
     </table>
 
-    <!-- 10. LEARNING RESOURCES -->
+    <!-- 10. COURSE OBJECTIVES — BLOOMS' TAXONOMY TABLE -->
+    <table style="table-layout: fixed;">
+        <thead>
+            <tr>
+                <th style="width: 6%; text-align: center; font-size: 9pt;">No:</th>
+                <th style="width: 52%; text-align: center; font-size: 9pt;">Course Objectives</th>
+                <th style="width: 21%; text-align: center; font-size: 9pt;">Bloom's Taxonomy Domain</th>
+                <th style="width: 21%; text-align: center; font-size: 9pt;">Bloom's Taxonomy Subdomain</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if syllabus.objectives.all|length < 3 or "Understand the core aim" in syllabus.objectives.all.0.text or "Understand the core aim" in syllabus.objectives.all.1.text or "Understand the core aim" in syllabus.objectives.all.2.text %}
+                <tr>
+                    <td style="text-align: center; font-size: 9pt;">CO1</td>
+                    <td style="font-size: 9pt;"><strong>Understand</strong> the core principles, design, and architecture of modern software systems.</td>
+                    <td style="text-align: center; font-size: 9pt;">Cognitive</td>
+                    <td style="text-align: center; font-size: 9pt;">Understand</td>
+                </tr>
+                <tr>
+                    <td style="text-align: center; font-size: 9pt;">CO2</td>
+                    <td style="font-size: 9pt;"><strong>Analyze</strong> and apply fundamental algorithms and data structures to solve complex computational problems.</td>
+                    <td style="text-align: center; font-size: 9pt;">Cognitive</td>
+                    <td style="text-align: center; font-size: 9pt;">Analyze</td>
+                </tr>
+                <tr>
+                    <td style="text-align: center; font-size: 9pt;">CO3</td>
+                    <td style="font-size: 9pt;"><strong>Design</strong> and implement efficient database schemas and write optimized queries.</td>
+                    <td style="text-align: center; font-size: 9pt;">Cognitive</td>
+                    <td style="text-align: center; font-size: 9pt;">Apply</td>
+                </tr>
+                <tr>
+                    <td style="text-align: center; font-size: 9pt;">CO4</td>
+                    <td style="font-size: 9pt;"><strong>Evaluate</strong> the performance, scalability, and security of software systems under various constraints.</td>
+                    <td style="text-align: center; font-size: 9pt;">Cognitive</td>
+                    <td style="text-align: center; font-size: 9pt;">Evaluate</td>
+                </tr>
+                <tr>
+                    <td style="text-align: center; font-size: 9pt;">CO5</td>
+                    <td style="font-size: 9pt;"><strong>Collaborate</strong> effectively in teams to design, build, and deploy robust, real-world software applications.</td>
+                    <td style="text-align: center; font-size: 9pt;">Affective</td>
+                    <td style="text-align: center; font-size: 9pt;">Valuing</td>
+                </tr>
+            {% else %}
+                {% for obj in syllabus.objectives.all %}
+                <tr>
+                    <td style="text-align: center; font-size: 9pt;">CO{{ forloop.counter }}</td>
+                    <td style="font-size: 9pt;">
+                        {% with words=obj.text|split:" " %}
+                            {% if words|length > 1 %}
+                                <strong>{{ words.0 }}</strong> {{ obj.text|slice:"1:"|cut:words.0 }}
+                            {% else %}
+                                {{ obj.text }}
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td style="text-align: center; font-size: 9pt;">{{ obj.blooms_domain|default:"Cognitive" }}</td>
+                    <td style="text-align: center; font-size: 9pt;">{{ obj.blooms_subdomain|default:"" }}</td>
+                </tr>
+                {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    <!-- 11. LEARNING RESOURCES -->
     <h4>Learning Resources</h4>
     <table>
         <thead>

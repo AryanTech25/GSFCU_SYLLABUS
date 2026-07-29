@@ -259,7 +259,7 @@ def syllabus_builder(request):
 
             # 2. Dynamic Sections
             # Objectives
-            obj_keys = sorted([k for k in request.POST.keys() if k.startswith('obj_')])
+            obj_keys = sorted([k for k in request.POST.keys() if k.startswith('obj_') and not k.startswith('obj_domain_') and not k.startswith('obj_subdomain_')])
             if not obj_keys or not any(request.POST.get(k, '').strip() for k in obj_keys):
                 add_error("At least one Course Objective is required.")
             
@@ -334,7 +334,14 @@ def syllabus_builder(request):
                 draft_data = {}
                 
                 # Objectives
-                draft_data['objectives'] = [{'text': request.POST.get(k)} for k in obj_keys]
+                draft_data['objectives'] = []
+                for k in obj_keys:
+                    uid = k[4:]
+                    draft_data['objectives'].append({
+                        'text': request.POST.get(k),
+                        'domain': request.POST.get(f'obj_domain_{uid}', ''),
+                        'subdomain': request.POST.get(f'obj_subdomain_{uid}', ''),
+                    })
                 
                 # Units
                 draft_data['units'] = []
@@ -456,10 +463,22 @@ def syllabus_builder(request):
                      syllabus.learning_resources.all().delete()
                      
                      # --- RECREATE CHILDREN ---
-                     
-                     # Objectives
-                     obj_keys = sorted([k for k in request.POST.keys() if k.startswith('obj_')])
-                     objs = [CourseObjective(syllabus=syllabus, text=request.POST[k].strip()) for k in obj_keys if request.POST[k].strip()]
+
+                     # Objectives — also save Bloom's domain/subdomain per entry
+                     obj_keys = sorted([k for k in request.POST.keys() if k.startswith('obj_') and not k.startswith('obj_domain_') and not k.startswith('obj_subdomain_')])
+                     objs = []
+                     for k in obj_keys:
+                         text = request.POST[k].strip()
+                         if text:
+                             uid = k[4:]  # strip 'obj_' prefix to get the timestamp ID
+                             domain = request.POST.get(f'obj_domain_{uid}', '').strip()
+                             subdomain = request.POST.get(f'obj_subdomain_{uid}', '').strip()
+                             objs.append(CourseObjective(
+                                 syllabus=syllabus,
+                                 text=text,
+                                 blooms_domain=domain or None,
+                                 blooms_subdomain=subdomain or None,
+                             ))
                      CourseObjective.objects.bulk_create(objs)
 
                      # Theory Units
@@ -589,7 +608,11 @@ def syllabus_builder(request):
     draft_data = {}
     if saved_syllabus:
         # 1. Objectives
-        draft_data['objectives'] = [{'text': o.text} for o in saved_objectives]
+        draft_data['objectives'] = [{
+            'text': o.text,
+            'domain': o.blooms_domain or '',
+            'subdomain': o.blooms_subdomain or '',
+        } for o in saved_objectives]
         
         # 2. Units
         draft_data['units'] = []
@@ -796,10 +819,14 @@ def render_preview(request):
 
     # Mock Objectives
     objs = []
-    # logic to parse obj_TIMESTAMP
     for k in sorted(request.POST.keys()):
-        if k.startswith('obj_'):
-            objs.append(MockObj(text=request.POST[k]))
+        if k.startswith('obj_') and not k.startswith('obj_domain_') and not k.startswith('obj_subdomain_'):
+            uid = k[4:]
+            objs.append(MockObj(
+                text=request.POST[k],
+                blooms_domain=request.POST.get(f'obj_domain_{uid}', ''),
+                blooms_subdomain=request.POST.get(f'obj_subdomain_{uid}', ''),
+            ))
     mock_objectives = MockObj(items=objs)
 
     # Mock Units

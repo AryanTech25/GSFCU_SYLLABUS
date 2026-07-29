@@ -481,18 +481,69 @@ window.debugLog("Debug Console Initialized");
 
     // --- Dynamic Fields ---
 
+    // --- Bloom's Taxonomy data ---
+    const BLOOMS_MAP = {
+        'Cognitive':    ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'],
+        'Affective':    ['Receiving', 'Responding', 'Valuing', 'Organizing', 'Characterizing (by a value or value complex)'],
+        'Psychomotor':  ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Complex Overt Response', 'Adaptation', 'Origination'],
+    };
+
+    // Populate subdomain options when domain changes
+    window.onBloomsDomainChange = (domainSel) => {
+        const uid = domainSel.dataset.uid;
+        const subSel = document.getElementById(`obj_subdomain_${uid}`);
+        const domain = domainSel.value;
+        subSel.innerHTML = '<option value="">-- Select Subdomain --</option>';
+        if (domain && BLOOMS_MAP[domain]) {
+            BLOOMS_MAP[domain].forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                subSel.appendChild(opt);
+            });
+        }
+    };
+
     // Objectives (Page 2)
-    window.addObjective = (val = '') => {
+    window.addObjective = (val = '', domain = '', subdomain = '') => {
         const container = document.getElementById('objectives_container');
         const id = Date.now() + Math.floor(Math.random() * 1000);
+        const domainOptions = ['Cognitive', 'Affective', 'Psychomotor']
+            .map(d => `<option value="${d}" ${domain === d ? 'selected' : ''}>${d}</option>`).join('');
         const div = document.createElement('div');
         div.className = 'sb-dynamic-item';
+        div.style.cssText = 'display:flex; flex-direction:column; gap:6px; margin-bottom:10px;';
         div.innerHTML = `
             <textarea class="sb-textarea" rows="2" name="obj_${id}" placeholder="Enter objective..." required>${val}</textarea>
-            <button type="button" class="sb-btn sb-btn-danger sb-remove-btn" onclick="this.parentElement.remove()">🗑</button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div style="flex:1;">
+                    <label class="sb-label" style="font-size:0.8rem;">Bloom's Taxonomy Domain</label>
+                    <select class="sb-input" name="obj_domain_${id}" id="obj_domain_${id}" data-uid="${id}" onchange="onBloomsDomainChange(this)" required
+                            style="width:100%;">
+                        <option value="">-- Select Domain --</option>
+                        ${domainOptions}
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label class="sb-label" style="font-size:0.8rem;">Bloom's Taxonomy Subdomain</label>
+                    <select class="sb-input" name="obj_subdomain_${id}" id="obj_subdomain_${id}" required
+                            style="width:100%;">
+                        <option value="">-- Select Subdomain --</option>
+                    </select>
+                </div>
+                <button type="button" class="sb-btn sb-btn-danger sb-remove-btn" onclick="this.closest('.sb-dynamic-item').remove()" style="align-self:flex-end;">🗑</button>
+            </div>
         `;
         container.appendChild(div);
-    }
+        // Populate subdomain if domain already set
+        const domSel = document.getElementById(`obj_domain_${id}`);
+        if (domain) {
+            onBloomsDomainChange(domSel);
+            // Restore saved subdomain selection
+            const subSel = document.getElementById(`obj_subdomain_${id}`);
+            if (subdomain) subSel.value = subdomain;
+        }
+    };
 
     // Theory Units (Page 3)
     window.addTheoryUnit = () => {
@@ -729,7 +780,7 @@ window.debugLog("Debug Console Initialized");
 
             // 1. Objectives
             if (draftData.objectives && draftData.objectives.length > 0) {
-                draftData.objectives.forEach(obj => addObjective(obj.text));
+                draftData.objectives.forEach(obj => addObjective(obj.text || '', obj.domain || '', obj.subdomain || ''));
             } else {
                 addObjective('');
             }
@@ -927,6 +978,8 @@ window.debugLog("Debug Console Initialized");
 
             // Dynamic Fields (Objectives)
             'textarea[name^="obj_"]',
+            'select[name^="obj_domain_"]',
+            'select[name^="obj_subdomain_"]',
 
             // Dynamic Fields (Units)
             'input[name^="unit_title_"]',

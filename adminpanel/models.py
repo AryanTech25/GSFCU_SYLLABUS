@@ -171,8 +171,24 @@ class Syllabus(models.Model):
 
 
 class CourseObjective(models.Model):
+    BLOOMS_DOMAIN_CHOICES = [
+        ('Cognitive', 'Cognitive'),
+        ('Affective', 'Affective'),
+        ('Psychomotor', 'Psychomotor'),
+    ]
+
     syllabus = models.ForeignKey(Syllabus, on_delete=models.CASCADE, related_name='objectives')
     text = models.TextField()
+    blooms_domain = models.CharField(
+        max_length=20, choices=BLOOMS_DOMAIN_CHOICES,
+        blank=True, null=True,
+        verbose_name="Bloom's Taxonomy Domain"
+    )
+    blooms_subdomain = models.CharField(
+        max_length=60,
+        blank=True, null=True,
+        verbose_name="Bloom's Taxonomy Subdomain"
+    )
 
     def __str__(self):
         return f"Objective: {self.text[:50]}"
