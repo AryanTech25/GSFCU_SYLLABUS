@@ -1,0 +1,160 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    {% include 'pdf/syllabus_style.html' %}
+    <style>
+        /* Cover page styles */
+        .cover-page { text-align: center; font-family: 'Helvetica', sans-serif; }
+        .cover-title { font-size: 24pt; font-weight: bold; margin-bottom: 20px; }
+        .cover-subtitle { font-size: 20pt; font-weight: bold; color: #1b4332; margin-bottom: 30px; }
+        .cover-info { font-size: 14pt; margin-bottom: 10px; }
+        .cover-date { font-size: 10pt; color: gray; margin-top: 50px; }
+        
+        /* Summary table styles */
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; box-sizing: border-box; }
+        .summary-table th, .summary-table td { border: 1px solid #000; padding: 6px 8px; text-align: center; vertical-align: middle; font-size: 9pt; box-sizing: border-box; }
+        .summary-table th { background-color: #CCCCCC; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- REPEATING HEADER (Handled by @frame in PDF) -->
+    <div id="header_content">
+        <table class="header-table">
+            <tr>
+                <td style="width: 75%;">
+                    <div class="school-name">{{ school_name }}</div>
+                    <div class="program-name">{{ program_name }}</div>
+                    <div class="academic-year">Academic Year: {{ academic_year }}</div>
+                </td>
+                <td style="width: 25%; text-align: right;">
+                    <img src="{{ logo_path }}" class="logo-img">
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- REPEATING FOOTER (Handled by @frame in PDF) -->
+    <div id="footer_content" style="text-align: right; font-family: 'Times New Roman', Times, serif; font-size: 11pt;">
+        <span style="font-weight: bold;"><pdf:pagenumber /></span> <span style="font-weight: normal;">| Page</span>
+    </div>
+
+    <!-- 1. COVER PAGE (Only if requested) -->
+    {% if is_full_program %}
+    <div class="cover-page">
+        <br><br><br>
+        <img src="{{ logo_path }}" style="width: 216px; height: 108px;">
+        <br><br><br>
+        <div class="cover-title">GSFC UNIVERSITY</div>
+        <br><br>
+        <div class="cover-subtitle">FULL PROGRAM SYLLABUS</div>
+        <br><br>
+        <div class="cover-info"><b>School:</b> {{ school_name }}</div>
+        <div class="cover-info"><b>Program:</b> {{ program_name }}</div>
+        {% if branch_name and branch_name != "Common" and branch_name != "Mixed Branches" %}
+        <div class="cover-info"><b>Branch:</b> {{ branch_name }}</div>
+        {% endif %}
+        <div class="cover-info"><b>Academic Year:</b> {{ academic_year }}</div>
+        <br><br><br>
+        <div class="cover-info">Includes All Semester Syllabus Combined</div>
+        <div class="cover-date">Generated On: {{ generated_date }}</div>
+    </div>
+    <pdf:nextpage />
+    {% endif %}
+
+    <!-- 2. SUMMARY PAGE -->
+    {% if summary_rows %}
+    <h4>Program Structure Summary</h4>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 5%;">Sr. No.</th>
+                <th rowspan="2" style="width: 14%;">Subject Code</th>
+                <th rowspan="2" style="width: 6%;">Sem</th>
+                <th rowspan="2" style="width: 25%;">Subject Name</th>
+                <th colspan="4" style="width: 25%;">Teaching Scheme</th>
+                <th colspan="4" style="width: 25%;">Credit Details</th>
+            </tr>
+            <tr>
+                <th>L</th><th>P</th><th>T</th><th>Total</th>
+                <th>L</th><th>P</th><th>T</th><th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in summary_rows %}
+            <tr>
+                <td>{{ row.sr_no }}</td>
+                <td>{{ row.code }}</td>
+                <td>{{ row.semester }}</td>
+                <td style="text-align: left;">{{ row.name }}</td>
+                <td>{{ row.L }}</td>
+                <td>{{ row.P }}</td>
+                <td>{{ row.T }}</td>
+                <td style="font-weight: bold;">{{ row.hours_total }}</td>
+                <td>{{ row.cL }}</td>
+                <td>{{ row.cP }}</td>
+                <td>{{ row.cT }}</td>
+                <td style="font-weight: bold;">{{ row.credits_total }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="12">No subjects available</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <br><br>
+    
+    {% if evaluation_summary_rows %}
+    <h4>Evaluation Scheme Summary</h4>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th style="width: 5%;">Sr. No.</th>
+                <th style="width: 14%;">Course Code</th>
+                <th style="width: 25%;">Course Name</th>
+                <th style="width: 10%;">Theory MS Marks</th>
+                <th style="width: 10%;">Theory CEC Marks</th>
+                <th style="width: 10%;">Theory ES Marks</th>
+                <th style="width: 10%;">Theory Marks</th>
+                <th style="width: 10%;">Practical Marks</th>
+                <th style="width: 6%;">Total Marks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in evaluation_summary_rows %}
+            <tr>
+                <td>{{ row.sr_no }}</td>
+                <td>{{ row.code }}</td>
+                <td style="text-align: left;">{{ row.name }}</td>
+                <td>{{ row.ms }}</td>
+                <td>{{ row.cec }}</td>
+                <td>{{ row.es }}</td>
+                <td style="font-weight: bold;">{{ row.theory_total }}</td>
+                <td>{{ row.practical_total }}</td>
+                <td style="font-weight: bold;">{{ row.total }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9">No evaluation schemes available</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <pdf:nextpage />
+    {% endif %}
+
+    <!-- 3. INDIVIDUAL SYLLABI -->
+    {% for syllabus_data in syllabi_list %}
+        {% with syllabus=syllabus_data.syllabus total_hours=syllabus_data.total_hours total_credits=syllabus_data.total_credits semester_name=syllabus_data.semester_name %}
+            {% include "pdf/syllabus_body.html" %}
+        {% endwith %}
+        
+        {% if not forloop.last %}
+            <pdf:nextpage />
+        {% endif %}
+    {% endfor %}
+
+</body>
+</html>

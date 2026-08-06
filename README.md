@@ -463,4 +463,15 @@ python manage.py clearsessions
 
 ---
 
+## 🔄 Recent Updates (July 2026)
+
+- **PDF Generator Enhancements**: Improved pagination logic in `xhtml2pdf` templates to prevent orphaned rows (`page-break-inside: avoid`) and ensure table headers repeat cleanly across page boundaries.
+- **Dynamic Data Rendering**: Removed hardcoded placeholder text for Course Objectives in PDF templates, ensuring accurate rendering of faculty-submitted data from the database.
+- **Bug Fixes**: 
+  - Resolved Django template syntax errors related to CSS `@frame` directives in `xhtml2pdf` style blocks.
+  - Fixed unparenthesized generator expression errors and invalid return statements in `accounts/views.py`.
+  - Added missing `datetime` imports to fix server crashes during PDF generation.
+
+---
+
 *Developed for **GSFC University** — Academic Document Management System.*

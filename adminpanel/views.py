@@ -556,291 +556,6 @@ def _get_academic_year_from_qs(qs):
     return "Academic Year Not Defined"
 
 
-def _create_summary_pdf(school, program, branch_name, semester_val, qs, output_path, academic_year=None, is_preview=False):
-    """
-    Helper to create the professional summary page using ReportLab.
-    Ensures Preview and Final PDF look identical.
-    """
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, KeepTogether
-    from reportlab.lib.units import inch
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    from datetime import datetime
-    import os
-    from django.conf import settings
-
-    # Layout Constants — Portrait A4
-    page_width, page_height = A4
-    left_margin = 0.5 * inch
-    right_margin = 0.5 * inch
-    available_width = page_width - left_margin - right_margin
-
-    doc = SimpleDocTemplate(output_path, pagesize=A4,
-                           topMargin=0.4*inch, bottomMargin=0.4*inch,
-                           leftMargin=left_margin, rightMargin=right_margin)
-    elements = []
-    styles = getSampleStyleSheet()
-
-    # Logo Path
-    logo_path = os.path.join(settings.BASE_DIR, "static", "images", "gsfc_logo.png")
-    
-    header_style = styles['Heading1'].clone('header_style')
-    header_style.fontSize = 18
-    header_style.textColor = colors.black
-    header_style.alignment = TA_LEFT
-    header_style.fontName = 'Helvetica-Bold'
-    header_style.leading = 22
-    
-    subheader_style = styles['Normal'].clone('subheader_style')
-    subheader_style.fontSize = 12
-    subheader_style.alignment = TA_LEFT
-    subheader_style.fontName = 'Helvetica-Bold'
-    subheader_style.leading = 14
-
-    # Create a header table to hold text and logo
-    logo_img = ""
-    if os.path.exists(logo_path):
-        logo_img = Image(logo_path, width=1.6*inch, height=0.8*inch)
-        logo_img.hAlign = 'RIGHT'
-
-    info_text = [
-        [Paragraph(school.name.upper(), header_style), logo_img],
-        [Paragraph(f"PROGRAM: {program.name} ({branch_name})", subheader_style), ""],
-        [Paragraph(f"SEMESTER: {semester_val} – COURSE STRUCTURE" + (" (PREVIEW)" if is_preview else ""), subheader_style), ""]
-    ]
-    
-    # Dynamically scale header table
-    header_table = Table(info_text, colWidths=[available_width - 1.7*inch, 1.7*inch])
-    header_table.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('SPAN', (1, 0), (1, 2)),
-        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-    ]))
-    elements.append(header_table)
-
-    # Academic Year
-    academic_year_display = academic_year or "Academic Year Not Defined"
-    info_style = styles['Normal'].clone('info_style')
-    info_style.fontSize = 11
-    info_style.alignment = TA_LEFT
-    elements.append(Paragraph(f"Academic Year: {academic_year_display}", info_style))
-    elements.append(Spacer(1, 0.15*inch))
-
-    # --- TWO-TABLE STRUCTURE ---
-    # Box 1: Sr No | Course Code | Course Name | Sem | TS: L P T Total | TC: L P T Total
-    table_data_1 = [
-        ['Sr.\nNo.', 'Course\nCode', 'Course Name', 'Sem', 'Teaching Scheme (Hours/Week)', '', '', '', 'Teaching Credit', '', '', ''],
-        ['', '', '', '', 'L', 'P', 'T', 'Total', 'L', 'P', 'T', 'Total']
-    ]
-    
-    # Box 2: Sr No | Course Code | Course Name | MS | CEC | ES | Theory Total | Prac | Grand
-    table_data_2 = [
-        ['Sr.\nNo.', 'Course\nCode', 'Course Name', 'Theory:\nMS Marks', 'Theory:\nCEC Marks', 'Theory:\nES Marks', 'Theory\nMarks', 'Practical\nMarks', 'Total\nMarks']
-    ]
-
-    # Define style for wrapping course names with 0 margin/space
-    course_name_style = styles['Normal'].clone('course_name_style')
-    course_name_style.fontSize = 8
-    course_name_style.leading = 10
-    course_name_style.alignment = TA_LEFT
-    course_name_style.spaceBefore = 0
-    course_name_style.spaceAfter = 0
-
-    for idx, item in enumerate(qs, 1):
-        subject = item.subject
-        syllabus = subject.syllabus if hasattr(subject, 'syllabus') else None
-        
-        l = syllabus.hours_lecture if syllabus else 0
-        p = syllabus.hours_practical if syllabus else 0
-        t = syllabus.hours_tutorial if syllabus else 0
-        ts_total = l + p + t
-        
-        cl = syllabus.credit_lecture if syllabus else 0
-        cp = syllabus.credit_practical if syllabus else 0
-        ct = syllabus.credit_tutorial if syllabus else 0
-        tc_total = cl + cp + ct
-        
-        ms = 0; cec = 0; es = 0; theory_total = 0; prac_total = 0; grand_total = 0
-        if syllabus and hasattr(syllabus, 'evaluation_scheme'):
-            ev = syllabus.evaluation_scheme
-            ms = ev.mid_sem
-            cec = ev.cec_attendance + ev.cec_mcq + ev.cec_assignment
-            es = ev.end_sem
-            theory_total = ms + cec + es
-            prac_total = (ev.prac_attendance + ev.prac_exam + ev.prac_viva + ev.prac_journal + ev.prac_discipline)
-            grand_total = theory_total + prac_total
-        
-        # Use Paragraph to support multi-line wrapping and auto-height
-        course_name_para_1 = Paragraph(subject.course_name, course_name_style)
-        course_name_para_2 = Paragraph(subject.course_name, course_name_style)
-        
-        # Strip "Semester " prefix so the Sem column only shows the numeral (e.g. "V", "III")
-        raw_sem = str(subject.semester) if hasattr(subject, 'semester') else ''
-        sem_val = raw_sem.replace('Semester ', '').replace('semester ', '').strip()
-        table_data_1.append([
-            str(idx), subject.course_code, course_name_para_1,
-            sem_val,
-            str(l), str(p), str(t), str(ts_total),
-            str(cl), str(cp), str(ct), str(tc_total)
-        ])
-        
-        table_data_2.append([
-            str(idx), subject.course_code, course_name_para_2,
-            str(ms), str(cec), str(es), str(theory_total), str(prac_total), str(grand_total)
-        ])
-
-    # --- Fixed portrait-width column distribution ---
-    # A4 portrait available ≈ 7.27 inch (8.27 - 0.5 - 0.5 margins).
-    # All columns are FIXED so Course Name never auto-expands beyond ~26%.
-    #
-    # Box 1: 12 cols — Sr No | Code | Name | Sem | L | P | T | Tot | L | P | T | Tot
-    #   Sem is now 0.28" (just wide enough for a Roman numeral like "VIII"), saving
-    #   0.14" vs the old 0.42", which goes directly to Course Name.
-    #   0.36 + 0.88 + Name + 0.28 + (0.44×6) + (0.55×2) = available_width
-    #   fixed_sum_excl_name = 0.36+0.88+0.28+2.64+1.10 = 5.26 → Name ≈ 2.01"
-    fixed_excl_name_1 = (
-        0.36 + 0.88 +              # Sr No, Code
-        0.28 +                     # Sem (narrow — numeral only)
-        0.44 + 0.44 + 0.44 + 0.55 +  # TS: L, P, T, Total
-        0.44 + 0.44 + 0.44 + 0.55    # TC: L, P, T, Total
-    ) * inch
-    col_widths_1 = [
-        0.36 * inch,   # Sr No
-        0.88 * inch,   # Course Code
-        available_width - fixed_excl_name_1,  # Course Name (~28%, wraps)
-        0.28 * inch,   # Sem (numeral only, e.g. "V")
-        0.44 * inch, 0.44 * inch, 0.44 * inch, 0.55 * inch,  # TS: L, P, T, Total
-        0.44 * inch, 0.44 * inch, 0.44 * inch, 0.55 * inch,  # TC: L, P, T, Total
-    ]
-
-    # Box 2: 9 cols — Sr No | Code | Name | MS | CEC | ES | Theory | Prac | Grand
-    #   0.36 + 0.88 + Name + (0.68×6) = available_width
-    #   fixed_sum_excl_name = 0.36+0.88+4.08 = 5.32 → Name ≈ 1.95"
-    fixed_excl_name_2 = (
-        0.36 + 0.88 +              # Sr No, Code
-        0.68 + 0.68 + 0.68 +      # MS, CEC, ES Marks
-        0.68 + 0.68 + 0.68        # Theory Total, Practical, Grand Total
-    ) * inch
-    col_widths_2 = [
-        0.36 * inch,   # Sr No
-        0.88 * inch,   # Course Code
-        available_width - fixed_excl_name_2,  # Course Name (~26%, wraps)
-        0.68 * inch,   # MS Marks
-        0.68 * inch,   # CEC Marks
-        0.68 * inch,   # ES Marks
-        0.68 * inch,   # Theory Total
-        0.68 * inch,   # Practical Marks
-        0.68 * inch,   # Grand Total
-    ]
-
-    table_1 = Table(table_data_1, colWidths=col_widths_1, repeatRows=2)
-    table_2 = Table(table_data_2, colWidths=col_widths_2, repeatRows=1)
-    
-    table_style_1 = [
-        # --- BASE STYLE ---
-        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ('FONTSIZE', (0,0), (-1,-1), 8),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 2),
-        ('RIGHTPADDING', (0,0), (-1,-1), 2),
-        
-        # --- ACADEMIC HEADER STYLE (MATCHING SYLLABUS PAGES) ---
-        ('BACKGROUND', (0,0), (-1,1), colors.HexColor('#d3d3d3')), # Official Grey
-        ('TEXTCOLOR', (0,0), (-1,1), colors.black),
-        ('FONTNAME', (0,0), (-1,1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,1), 8),
-        ('TOPPADDING', (0,0), (-1,1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,1), 3),
-
-        # --- DATA ROW STYLE ---
-        ('BACKGROUND', (0, 2), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 2), (-1, -1), colors.black),
-
-        # --- HEADER SPANNING (12-col: Sr|Code|Name|Sem|L|P|T|Tot|L|P|T|Tot) ---
-        ('SPAN', (0,0), (0,1)),   # Sr No spans 2 rows
-        ('SPAN', (1,0), (1,1)),   # Course Code spans 2 rows
-        ('SPAN', (2,0), (2,1)),   # Course Name spans 2 rows
-        ('SPAN', (3,0), (3,1)),   # Sem spans 2 rows
-        ('SPAN', (4,0), (7,0)),   # Teaching Scheme group header
-        ('SPAN', (8,0), (11,0)),  # Teaching Credit group header
-
-        ('ALIGN', (2, 2), (2, -1), 'LEFT'),
-        ('LEFTPADDING', (2, 2), (2, -1), 4),
-    ]
-    table_1.setStyle(TableStyle(table_style_1))
-
-    table_style_2 = [
-        # --- BASE STYLE ---
-        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ('FONTSIZE', (0,0), (-1,-1), 8),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 2),
-        ('RIGHTPADDING', (0,0), (-1,-1), 2),
-        
-        # --- ACADEMIC HEADER STYLE ---
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#d3d3d3')), # Official Grey
-        ('TEXTCOLOR', (0,0), (-1,0), colors.black),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 8),
-        ('TOPPADDING', (0,0), (-1,0), 3),
-        ('BOTTOMPADDING', (0,0), (-1,0), 3),
-
-        # --- DATA ROW STYLE ---
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-
-        ('ALIGN', (2, 1), (2, -1), 'LEFT'),
-        ('LEFTPADDING', (2, 1), (2, -1), 4),
-    ]
-    table_2.setStyle(TableStyle(table_style_2))
-
-    section_label_style = styles['Normal'].clone('section_label_style')
-    section_label_style.fontSize = 10
-    section_label_style.alignment = TA_LEFT
-    section_label_style.fontName = 'Helvetica-Bold'
-    section_label_style.leading = 12
-    section_label_style.textColor = colors.black
-    section_label_style.spaceBefore = 0
-    section_label_style.spaceAfter = 0
-
-    # Append Box 1 (Teaching Scheme & Credit) wrapped in KeepTogether to prevent orphans
-    elements.append(KeepTogether([
-        Paragraph("Teaching Scheme & Credit", section_label_style),
-        Spacer(1, 0.04*inch),
-        table_1
-    ]))
-    
-    # Append Box 2 (Evaluation Scheme) wrapped in KeepTogether to prevent orphans
-    elements.append(Spacer(1, 0.12*inch))
-    elements.append(KeepTogether([
-        Paragraph("Evaluation Scheme", section_label_style),
-        Spacer(1, 0.04*inch),
-        table_2
-    ]))
-
-    # Footer - Compact
-    elements.append(Spacer(1, 0.1*inch))
-    footer_style = styles['Normal'].clone('footer_style')
-    footer_style.fontSize = 8
-    footer_style.textColor = colors.grey
-    footer_style.alignment = TA_CENTER
-    elements.append(Paragraph(f"Academic Year: {academic_year_display} | Generated on {timezone.now().strftime('%B %d, %Y')} | GSFC University Syllabus Management System", footer_style))
-
-    doc.build(elements)
-    return output_path
-
-
 @never_cache
 @login_required
 @user_passes_test(is_admin, login_url='/login/')
@@ -849,52 +564,35 @@ def generate_semester_pdf(request):
     Admin-only view to generate combined PDF from currently displayed subjects.
     Works with any filter combination - generates PDF for whatever is shown on screen.
     """
-    # Get filter values (same as manage_semester_structure view)
     selected_school_id = request.GET.get('school_id') or None
     selected_program_id = request.GET.get('program_id') or None
     selected_branch_id = request.GET.get('branch_id') or None
     selected_semester = request.GET.get('semester') or None
 
     try:
-        from pypdf import PdfWriter, PdfReader
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib import colors
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.units import inch
         import os
         from django.conf import settings
         from django.core.files import File
-        import hashlib
         from datetime import datetime
+        from django.template.loader import render_to_string
+        from io import BytesIO
+        from xhtml2pdf import pisa
+        from django.http import HttpResponse
         
     except ImportError as e:
         messages.error(request, f"Required library not available: {str(e)}")
         return redirect('manage_semester_structure')
 
     try:
-        # Build query for subjects based on selected filters (same logic as display)
-        # Mapping for DB mismatch "1" <-> "Semester I"
-        
         semester_map = {
-            '1': 'Semester I',
-            '2': 'Semester II',
-            '3': 'Semester III',
-            '4': 'Semester IV',
-            '5': 'Semester V',
-            '6': 'Semester VI',
-            '7': 'Semester VII',
-            '8': 'Semester VIII',
+            '1': 'Semester I', '2': 'Semester II', '3': 'Semester III', '4': 'Semester IV',
+            '5': 'Semester V', '6': 'Semester VI', '7': 'Semester VII', '8': 'Semester VIII',
         }
     
         q_filters = Q()
-        
-        if selected_school_id:
-             q_filters &= Q(school_id=selected_school_id)
-        if selected_program_id:
-             q_filters &= Q(program_id=selected_program_id)
-        if selected_branch_id:
-             q_filters &= Q(branch_id=selected_branch_id)
+        if selected_school_id: q_filters &= Q(school_id=selected_school_id)
+        if selected_program_id: q_filters &= Q(program_id=selected_program_id)
+        if selected_branch_id: q_filters &= Q(branch_id=selected_branch_id)
         if selected_semester:
              mapped_sem = semester_map.get(selected_semester)
              if mapped_sem:
@@ -902,7 +600,6 @@ def generate_semester_pdf(request):
              else:
                  q_filters &= Q(semester=selected_semester)
 
-        # Get all matching subjects (same as what's displayed)
         all_subjects = Subject.objects.filter(q_filters).select_related(
             'school', 'program', 'branch', 'syllabus', 'syllabus__evaluation_scheme'
         ).order_by('course_code')
@@ -911,7 +608,7 @@ def generate_semester_pdf(request):
             messages.warning(request, "No subjects match the current filters.")
             return redirect('manage_semester_structure')
         
-        # Filter to only subjects WITH PDFs
+        # Filter to only subjects WITH syllabuses
         subjects_with_pdfs = [
             subj for subj in all_subjects 
             if hasattr(subj, 'syllabus') and subj.syllabus and subj.syllabus.pdf_file
@@ -921,161 +618,136 @@ def generate_semester_pdf(request):
             messages.error(request, "None of the displayed subjects have PDF files generated yet.")
             return redirect('manage_semester_structure')
         
-        # Get metadata for PDF generation
+        # Get metadata
         school = subjects_with_pdfs[0].school
         program = subjects_with_pdfs[0].program
         branch_name = subjects_with_pdfs[0].branch.name if subjects_with_pdfs[0].branch else "Mixed"
         semester_val = selected_semester if selected_semester else "Mixed Semesters"
         
-        # Check for mixed contexts
         schools_set = set(s.school.code for s in subjects_with_pdfs)
         programs_set = set(s.program.name for s in subjects_with_pdfs)
         branches_set = set(s.branch.name if s.branch else "Common" for s in subjects_with_pdfs)
         semesters_set = set(s.semester for s in subjects_with_pdfs)
         
-        # Update metadata for mixed contexts
+        school_name = school.name
+        program_name = program.name
         if len(schools_set) > 1:
-            school.name = "Multiple Schools"
-            school.code = "MIXED"
+            school_name = "Multiple Schools"
         if len(programs_set) > 1:
-            program.name = "Multiple Programs"
+            program_name = "Multiple Programs"
         if len(branches_set) > 1:
             branch_name = "Mixed Branches"
         if len(semesters_set) > 1:
             semester_val = "Mixed Semesters"
         
-        # === STEP 1: Generate Summary Page ===
-        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        # Use timestamp for unique filename
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        summary_path = os.path.join(temp_dir, f'summary_{timestamp}.pdf')
-        
-        # Get academic year from first subject
-        academic_year = "Academic Year Not Defined"
-        # Get academic year from first subject
         academic_year = "Academic Year Not Defined"
         for subj in subjects_with_pdfs:
-            # Use Subject Academic Year (NEW)
             if hasattr(subj, 'academic_year') and subj.academic_year:
                 academic_year = subj.academic_year
                 break
-                
             if hasattr(subj, 'syllabus') and subj.syllabus.faculty:
                 if subj.syllabus.faculty.academic_year:
                     academic_year = subj.syllabus.faculty.academic_year
                     break
+
+        summary_rows = []
+        evaluation_summary_rows = []
+        for sequence, subject in enumerate(subjects_with_pdfs, start=1):
+            syllabus = subject.syllabus
+            semester_val_for_row = subject.semester if subject.semester else "Semester Not Defined"
+            row = {
+                'sr_no': sequence,
+                'semester': str(semester_val_for_row).replace('Semester ', '').replace('Sem ', ''),
+                'code': subject.course_code,
+                'name': subject.course_name,
+                'L': syllabus.hours_lecture,
+                'P': syllabus.hours_practical,
+                'T': syllabus.hours_tutorial,
+                'hours_total': syllabus.hours_lecture + syllabus.hours_practical + syllabus.hours_tutorial,
+                'cL': syllabus.credit_lecture,
+                'cP': syllabus.credit_practical,
+                'cT': syllabus.credit_tutorial,
+                'credits_total': syllabus.credit_lecture + syllabus.credit_practical + syllabus.credit_tutorial
+            }
+            summary_rows.append(row)
+            
+            eval_scheme = getattr(syllabus, 'evaluation_scheme', None)
+            if eval_scheme:
+                theory_marks = eval_scheme.mid_sem + eval_scheme.cec_attendance + eval_scheme.cec_mcq + eval_scheme.cec_assignment + eval_scheme.end_sem
+                prac_marks = eval_scheme.prac_attendance + eval_scheme.prac_exam + eval_scheme.prac_viva + eval_scheme.prac_journal + eval_scheme.prac_discipline
+                eval_row = {
+                    'sr_no': sequence,
+                    'code': subject.course_code,
+                    'name': subject.course_name,
+                    'ms': eval_scheme.mid_sem,
+                    'cec': eval_scheme.cec_attendance + eval_scheme.cec_mcq + eval_scheme.cec_assignment,
+                    'es': eval_scheme.end_sem,
+                    'theory_total': theory_marks,
+                    'practical_total': prac_marks,
+                    'total': theory_marks + prac_marks
+                }
+            else:
+                eval_row = {
+                    'sr_no': sequence, 'code': subject.course_code, 'name': subject.course_name,
+                    'ms': '-', 'cec': '-', 'es': '-', 'theory_total': '-', 'practical_total': '-', 'total': '-'
+                }
+            evaluation_summary_rows.append(eval_row)
+
+        syllabi_list = []
+        for subject in subjects_with_pdfs:
+            syllabus = subject.syllabus
+            syllabi_list.append({
+                'syllabus': syllabus,
+                'total_hours': syllabus.hours_lecture + syllabus.hours_practical + syllabus.hours_tutorial,
+                'total_credits': syllabus.credit_lecture + syllabus.credit_practical + syllabus.credit_tutorial,
+                'semester_name': subject.semester if subject.semester else "Semester Not Defined"
+            })
+
+        logo_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'gsfc_logo.png')
         
-        # Create wrapper objects that match the _create_summary_pdf expectation
-        class SubjectWrapper:
-            def __init__(self, subject):
-                self.subject = subject
+        context = {
+            'school_name': school_name,
+            'program_name': program_name,
+            'branch_name': branch_name,
+            'academic_year': academic_year,
+            'logo_path': logo_path,
+            'generated_date': datetime.now().strftime('%B %d, %Y'),
+            'summary_rows': summary_rows,
+            'evaluation_summary_rows': evaluation_summary_rows,
+            'syllabi_list': syllabi_list,
+            'is_full_program': False
+        }
+
+        html_string = render_to_string('pdf/combined_syllabus.html', context)
+
+        result = BytesIO()
+        pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result)
         
-        wrapped_subjects = [SubjectWrapper(s) for s in subjects_with_pdfs]
-        _create_summary_pdf(school, program, branch_name, semester_val, wrapped_subjects, 
-                          summary_path, academic_year=academic_year, is_preview=False)
-        
-        # === STEP 2: Merge PDFs ===
-        merger = PdfWriter()
-        
-        try:
-            # Add summary as first page
-            with open(summary_path, 'rb') as summary_file:
-                summary_reader = PdfReader(summary_file)
-                merger.append_pages_from_reader(summary_reader)
-            
-            # Add subject PDFs in order
-            pdf_count = 0
-            skipped_pdfs = []
-            
-            for subject in subjects_with_pdfs:
-                try:
-                    file_path = subject.syllabus.pdf_file.path
-                    if os.path.exists(file_path):
-                        with open(file_path, 'rb') as f:
-                            reader = PdfReader(f)
-                            merger.append_pages_from_reader(reader)
-                            pdf_count += 1
-                    else:
-                        skipped_pdfs.append(subject.course_code)
-                except Exception as e:
-                    skipped_pdfs.append(f"{subject.course_code} (Error: {str(e)})")
-                    continue
-            
-            if skipped_pdfs:
-                messages.warning(
-                    request,
-                    f"Some subject PDFs had errors and were skipped: {', '.join(skipped_pdfs)}"
-                )
-            
-            if pdf_count == 0:
-                messages.error(request, "No subject PDFs could be merged.")
-                raise Exception("No PDFs to merge")
-            
-            # === STEP 3: Generate filename and save ===
-            # Create descriptive filename based on filters
+        if not pdf.err:
             filename_parts = []
-            if selected_school_id and len(schools_set) == 1:
-                filename_parts.append(school.code)
-            if selected_program_id and len(programs_set) == 1:
-                filename_parts.append(program.name.replace(' ', '_'))
-            if selected_branch_id and len(branches_set) == 1:
-                filename_parts.append(branch_name.replace(' ', '_'))
-            if selected_semester and len(semesters_set) == 1:
-                filename_parts.append(semester_val.replace(' ', '_'))
+            if selected_school_id and len(schools_set) == 1: filename_parts.append(school.code)
+            if selected_program_id and len(programs_set) == 1: filename_parts.append(program.name.replace(' ', '_'))
+            if selected_branch_id and len(branches_set) == 1: filename_parts.append(branch_name.replace(' ', '_'))
+            if selected_semester and len(semesters_set) == 1: filename_parts.append(semester_val.replace(' ', '_'))
             
-            if not filename_parts:
-                filename_parts.append("Combined")
+            if not filename_parts: filename_parts.append("Combined")
             
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename_parts.append(f"Syllabus_{timestamp}")
             filename = "_".join(filename_parts) + ".pdf"
             filename = "".join([c if c.isalnum() or c in ('_','-','.') else '_' for c in filename])
-            
-            # Write merged PDF to temp file
-            temp_merged_path = os.path.join(temp_dir, filename)
-            with open(temp_merged_path, 'wb') as output_file:
-                merger.write(output_file)
-            
-            # Clean up summary temp file
-            try:
-                os.remove(summary_path)
-            except:
-                pass
-            
-            # Serve the file for download
-            from django.http import FileResponse
-            
-            response = FileResponse(
-                open(temp_merged_path, 'rb'),
-                content_type='application/pdf'
-            )
+
+            response = HttpResponse(result.getvalue(), content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            
-            # Note: temp file will be cleaned up after response is sent
-            # Django handles this automatically with FileResponse
             return response
-        
-        except Exception as inner_error:
-            # Clean up temp files on error
-            try:
-                os.remove(summary_path)
-            except:
-                pass
-            try:
-                if os.path.exists(temp_merged_path):
-                    os.remove(temp_merged_path)
-            except:
-                pass
-            raise inner_error
+            
+        return HttpResponse(f"PDF Generation Error: {pdf.err}")
 
     except Exception as e:
         messages.error(request, f"Error generating PDF: {str(e)}")
         import traceback
-        print(traceback.format_exc())  # For debugging
+        print(traceback.format_exc())
         return redirect('manage_semester_structure')
-
-
 
 
 @never_cache
@@ -1096,15 +768,13 @@ def preview_semester_pdf(request):
         return redirect('manage_semester_structure')
 
     try:
-        from pypdf import PdfWriter, PdfReader
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib import colors
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.units import inch
         from io import BytesIO
         import os
         from django.conf import settings
+        from django.template.loader import render_to_string
+        from xhtml2pdf import pisa
+        from django.http import HttpResponse, FileResponse
+        from datetime import datetime
         
     except ImportError as e:
         messages.error(request, f"Required library not available: {str(e)}")
@@ -1135,53 +805,82 @@ def preview_semester_pdf(request):
             query = f"?school_id={school_id}&program_id={program_id}&branch_id={branch_id or ''}&semester={semester_val}"
             return redirect(base_url + query)
 
-        # === Generate Summary Page (PREVIEW) ===
-        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
-        os.makedirs(temp_dir, exist_ok=True)
-        summary_path = os.path.join(temp_dir, f'preview_summary_{sem_obj.id}_{branch_id or "common"}.pdf')
+        # Build summary and syllabi list
+        summary_rows = []
+        evaluation_summary_rows = []
+        syllabi_list = []
         
+        for sequence, item in enumerate(qs, start=1):
+            subject = item.subject
+            syllabus = getattr(subject, 'syllabus', None)
+            semester_val_for_row = subject.semester if subject.semester else sem_obj.semester_number
+            row = {
+                'sr_no': sequence,
+                'semester': str(semester_val_for_row).replace('Semester ', '').replace('Sem ', ''),
+                'code': subject.course_code,
+                'name': subject.course_name,
+            }
+            if syllabus:
+                row['L'] = syllabus.hours_lecture
+                row['P'] = syllabus.hours_practical
+                row['T'] = syllabus.hours_tutorial
+                row['hours_total'] = syllabus.hours_lecture + syllabus.hours_practical + syllabus.hours_tutorial
+                row['cL'] = syllabus.credit_lecture
+                row['cP'] = syllabus.credit_practical
+                row['cT'] = syllabus.credit_tutorial
+                row['credits_total'] = syllabus.credit_lecture + syllabus.credit_practical + syllabus.credit_tutorial
+                
+                syllabi_list.append({
+                    'syllabus': syllabus,
+                    'total_hours': row['hours_total'],
+                    'total_credits': row['credits_total'],
+                    'semester_name': semester_val_for_row
+                })
+                
+                eval_scheme = getattr(syllabus, 'evaluation_scheme', None)
+                if eval_scheme:
+                    theory_marks = eval_scheme.mid_sem + eval_scheme.cec_attendance + eval_scheme.cec_mcq + eval_scheme.cec_assignment + eval_scheme.end_sem
+                    prac_marks = eval_scheme.prac_attendance + eval_scheme.prac_exam + eval_scheme.prac_viva + eval_scheme.prac_journal + eval_scheme.prac_discipline
+                    eval_row = {
+                        'sr_no': sequence, 'code': subject.course_code, 'name': subject.course_name,
+                        'ms': eval_scheme.mid_sem, 'cec': eval_scheme.cec_attendance + eval_scheme.cec_mcq + eval_scheme.cec_assignment,
+                        'es': eval_scheme.end_sem, 'theory_total': theory_marks, 'practical_total': prac_marks, 'total': theory_marks + prac_marks
+                    }
+                else:
+                    eval_row = {'sr_no': sequence, 'code': subject.course_code, 'name': subject.course_name, 'ms': '-', 'cec': '-', 'es': '-', 'theory_total': '-', 'practical_total': '-', 'total': '-'}
+            else:
+                row.update({'L':'-','P':'-','T':'-','hours_total':'-','cL':'-','cP':'-','cT':'-','credits_total':'-'})
+                eval_row = {'sr_no': sequence, 'code': subject.course_code, 'name': subject.course_name, 'ms': '-', 'cec': '-', 'es': '-', 'theory_total': '-', 'practical_total': '-', 'total': '-'}
+            
+            summary_rows.append(row)
+            evaluation_summary_rows.append(eval_row)
+            
+        if not syllabi_list:
+            messages.error(request, "No subject syllabus PDFs available to preview.")
+            return redirect('manage_semester_structure')
+            
         academic_year = _get_academic_year_from_qs(qs)
-        _create_summary_pdf(school, program, branch_name, semester_val, qs, summary_path, academic_year=academic_year, is_preview=True)
         
-        # === Merge PDFs ===
-        merger = PdfWriter()
-        files_opened = []
+        context = {
+            'school_name': school.name,
+            'program_name': program.name,
+            'branch_name': branch_name,
+            'academic_year': academic_year,
+            'logo_path': os.path.join(settings.BASE_DIR, 'static', 'images', 'gsfc_logo.png'),
+            'generated_date': datetime.now().strftime('%B %d, %Y'),
+            'summary_rows': summary_rows,
+            'evaluation_summary_rows': evaluation_summary_rows,
+            'syllabi_list': syllabi_list,
+            'is_full_program': False
+        }
+
+        html_string = render_to_string('pdf/combined_syllabus.html', context)
+
+        buffer = BytesIO()
+        pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), buffer)
         
-        try:
-            # Add summary
-            with open(summary_path, 'rb') as summary_file:
-                summary_reader = PdfReader(summary_file)
-                merger.append_pages_from_reader(summary_reader)
-            
-            pdf_count = 0
-            for item in qs:
-                try:
-                    if hasattr(item.subject, 'syllabus') and item.subject.syllabus.pdf_file:
-                        file_path = item.subject.syllabus.pdf_file.path
-                        if os.path.exists(file_path):
-                            with open(file_path, 'rb') as f:
-                                reader = PdfReader(f)
-                                merger.append_pages_from_reader(reader)
-                                pdf_count += 1
-                except:
-                    continue
-            
-            if pdf_count == 0:
-                messages.error(request, "No subject syllabus PDFs available to preview.")
-                raise Exception("No PDFs to merge")
-            
-            # Write to BytesIO
-            buffer = BytesIO()
-            merger.write(buffer)
+        if not pdf.err:
             buffer.seek(0)
-            
-            # Clean up temp summary file
-            try:
-                os.remove(summary_path)
-            except:
-                pass
-            
-            # Return PDF
             download_mode = request.GET.get('download') == '1'
             filename = f"{school.code}_{program.name}_{branch_name}_{semester_val}_Preview.pdf"
             filename = "".join([c if c.isalnum() or c in ('_','-','.') else '_' for c in filename])
@@ -1191,13 +890,7 @@ def preview_semester_pdf(request):
             response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
             return response
             
-        except Exception as e:
-            # Clean up on error
-            try:
-                os.remove(summary_path)
-            except:
-                pass
-            raise e
+        return HttpResponse(f"PDF Generation Error: {pdf.err}")
 
     except Exception as e:
         messages.error(request, f"Error generating preview: {str(e)}")
@@ -1431,10 +1124,14 @@ def generate_full_program_syllabus(request):
         return redirect('manage_semester_structure')
 
     try:
-        from pypdf import PdfWriter
         import os
         from django.conf import settings
-        from .models import SemesterReference, Semester, Branch, School, Program
+        from .models import SemesterReference, Semester, Branch, School, Program, SemesterSubject
+        from django.template.loader import render_to_string
+        from xhtml2pdf import pisa
+        from io import BytesIO
+        from django.http import FileResponse
+        from datetime import datetime
 
         school = get_object_or_404(School, id=school_id)
         program = get_object_or_404(Program, id=program_id)
@@ -1456,7 +1153,97 @@ def generate_full_program_syllabus(request):
             messages.warning(request, "No semester PDFs found to combine.")
             return redirect(f"{reverse('manage_semester_structure')}?school_id={school_id}&program_id={program_id}&branch_id={branch_id or ''}")
 
-        # 2. Setup storage
+        # Try to find a real AY from the first ref's subjects
+        academic_year = "Not Defined"
+        first_ref_sem = sem_refs.first().semester
+        qs_sem = SemesterSubject.objects.filter(semester=first_ref_sem)
+        if branch:
+            qs_sem = qs_sem.filter(subject__branch=branch)
+        if qs_sem.exists():
+            academic_year = _get_academic_year_from_qs(qs_sem)
+
+        # 2. Gather all subjects from all semesters
+        summary_rows = []
+        evaluation_summary_rows = []
+        syllabi_list = []
+        global_sequence = 1
+        
+        for sem_ref in sem_refs:
+            sem_obj = sem_ref.semester
+            qs = SemesterSubject.objects.filter(semester=sem_obj).select_related(
+                'subject', 'subject__syllabus', 'subject__syllabus__evaluation_scheme'
+            ).order_by('sequence')
+            
+            if branch_id:
+                qs = qs.filter(subject__branch_id=branch_id)
+                
+            for item in qs:
+                subject = item.subject
+                syllabus = getattr(subject, 'syllabus', None)
+                semester_val_for_row = subject.semester if subject.semester else sem_obj.semester_number
+                row = {
+                    'sr_no': global_sequence,
+                    'semester': str(semester_val_for_row).replace('Semester ', '').replace('Sem ', ''),
+                    'code': subject.course_code,
+                    'name': subject.course_name,
+                }
+                
+                if syllabus:
+                    row['L'] = syllabus.hours_lecture
+                    row['P'] = syllabus.hours_practical
+                    row['T'] = syllabus.hours_tutorial
+                    row['hours_total'] = syllabus.hours_lecture + syllabus.hours_practical + syllabus.hours_tutorial
+                    row['cL'] = syllabus.credit_lecture
+                    row['cP'] = syllabus.credit_practical
+                    row['cT'] = syllabus.credit_tutorial
+                    row['credits_total'] = syllabus.credit_lecture + syllabus.credit_practical + syllabus.credit_tutorial
+                    
+                    syllabi_list.append({
+                        'syllabus': syllabus,
+                        'total_hours': row['hours_total'],
+                        'total_credits': row['credits_total'],
+                        'semester_name': semester_val_for_row
+                    })
+                    
+                    eval_scheme = getattr(syllabus, 'evaluation_scheme', None)
+                    if eval_scheme:
+                        theory_marks = eval_scheme.mid_sem + eval_scheme.cec_attendance + eval_scheme.cec_mcq + eval_scheme.cec_assignment + eval_scheme.end_sem
+                        prac_marks = eval_scheme.prac_attendance + eval_scheme.prac_exam + eval_scheme.prac_viva + eval_scheme.prac_journal + eval_scheme.prac_discipline
+                        eval_row = {
+                            'sr_no': global_sequence, 'code': subject.course_code, 'name': subject.course_name,
+                            'ms': eval_scheme.mid_sem, 'cec': eval_scheme.cec_attendance + eval_scheme.cec_mcq + eval_scheme.cec_assignment,
+                            'es': eval_scheme.end_sem, 'theory_total': theory_marks, 'practical_total': prac_marks, 'total': theory_marks + prac_marks
+                        }
+                    else:
+                        eval_row = {'sr_no': global_sequence, 'code': subject.course_code, 'name': subject.course_name, 'ms': '-', 'cec': '-', 'es': '-', 'theory_total': '-', 'practical_total': '-', 'total': '-'}
+                else:
+                    row.update({'L':'-','P':'-','T':'-','hours_total':'-','cL':'-','cP':'-','cT':'-','credits_total':'-'})
+                    eval_row = {'sr_no': global_sequence, 'code': subject.course_code, 'name': subject.course_name, 'ms': '-', 'cec': '-', 'es': '-', 'theory_total': '-', 'practical_total': '-', 'total': '-'}
+                
+                summary_rows.append(row)
+                evaluation_summary_rows.append(eval_row)
+                global_sequence += 1
+
+        if not syllabi_list:
+            messages.warning(request, "No subjects found in the selected semesters.")
+            return redirect(f"{reverse('manage_semester_structure')}?school_id={school_id}&program_id={program_id}&branch_id={branch_id or ''}")
+
+        context = {
+            'school_name': school.name,
+            'program_name': program.name,
+            'branch_name': branch_name,
+            'academic_year': academic_year,
+            'logo_path': os.path.join(settings.BASE_DIR, 'static', 'images', 'gsfc_logo.png'),
+            'generated_date': datetime.now().strftime('%B %d, %Y'),
+            'summary_rows': summary_rows,
+            'evaluation_summary_rows': evaluation_summary_rows,
+            'syllabi_list': syllabi_list,
+            'is_full_program': True
+        }
+
+        html_string = render_to_string('pdf/combined_syllabus.html', context)
+
+        # 3. Setup storage
         final_dir = os.path.join(settings.MEDIA_ROOT, 'final_syllabus')
         os.makedirs(final_dir, exist_ok=True)
         
@@ -1465,50 +1252,11 @@ def generate_full_program_syllabus(request):
         filename = f"{school.name[:3].upper()}_{safe_program}_{safe_branch}_FULL_SYLLABUS.pdf"
         output_path = os.path.join(final_dir, filename)
 
-        # 3. Create Cover Page
-        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
-        os.makedirs(temp_dir, exist_ok=True)
-        cover_path = os.path.join(temp_dir, f"cover_{program.id}_{branch_id or 'all'}.pdf")
-        
-        # Get Academic Year from first available ref
-        academic_year = "Not Defined"
-        # Try to find a real AY from the first ref's subjects
-        from .models import SemesterSubject
-        first_ref_sem = sem_refs.first().semester
-        qs = SemesterSubject.objects.filter(semester=first_ref_sem)
-        if branch:
-            qs = qs.filter(subject__branch=branch)
-        if qs.exists():
-            academic_year = _get_academic_year_from_qs(qs)
-
-        _create_full_syllabus_cover(school, program, branch_name, academic_year, cover_path)
-
-        # 4. Merge PDFs
-        merger = PdfWriter()
-        files_to_close = []
-
-        try:
-            # Add Cover
-            f_cover = open(cover_path, 'rb')
-            merger.append(f_cover)
-            files_to_close.append(f_cover)
-
-            # Add Semester PDFs
-            for ref in sem_refs:
-                if ref.pdf_file and os.path.exists(ref.pdf_file.path):
-                    f = open(ref.pdf_file.path, 'rb')
-                    merger.append(f)
-                    files_to_close.append(f)
-
-            # Save Final
-            with open(output_path, 'wb') as f_out:
-                merger.write(f_out)
-
-        finally:
-            for f in files_to_close:
-                f.close()
-            if os.path.exists(cover_path):
-                os.remove(cover_path)
+        with open(output_path, "w+b") as result_file:
+            pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result_file)
+            
+        if pdf.err:
+            raise Exception(f"PDF Generation Error: {pdf.err}")
 
         # 5. Serve for Download
         response = FileResponse(open(output_path, 'rb'), content_type='application/pdf')
@@ -1520,64 +1268,6 @@ def generate_full_program_syllabus(request):
         import traceback
         print(traceback.format_exc())
         return redirect(f"{reverse('manage_semester_structure')}?school_id={school_id}&program_id={program_id}&branch_id={branch_id or ''}")
-
-
-def _create_full_syllabus_cover(school, program, branch_name, academic_year, output_path):
-    """
-    Helper to create a professional cover page for the Full Program Syllabus.
-    """
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-    from reportlab.lib.units import inch
-    from reportlab.lib.enums import TA_CENTER
-    import os
-    from django.conf import settings
-
-    doc = SimpleDocTemplate(output_path, pagesize=A4,
-                           topMargin=1*inch, bottomMargin=1*inch,
-                           leftMargin=1*inch, rightMargin=1*inch)
-    elements = []
-    styles = getSampleStyleSheet()
-
-    # Logo
-    logo_path = os.path.join(settings.BASE_DIR, "static", "images", "gsfc_logo.png")
-    if os.path.exists(logo_path):
-        logo_img = Image(logo_path, width=3*inch, height=1.5*inch)
-        logo_img.hAlign = 'CENTER'
-        elements.append(logo_img)
-        elements.append(Spacer(1, 1*inch))
-
-    # University Name
-    univ_style = ParagraphStyle('UnivStyle', parent=styles['Heading1'], fontSize=24, alignment=TA_CENTER, spaceAfter=20)
-    elements.append(Paragraph("GSFC UNIVERSITY", univ_style))
-    elements.append(Spacer(1, 0.5*inch))
-
-    # Syllabus Title
-    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=20, alignment=TA_CENTER, spaceAfter=30, textColor=colors.HexColor('#1b4332'))
-    elements.append(Paragraph("FULL PROGRAM SYLLABUS", title_style))
-    elements.append(Spacer(1, 0.5*inch))
-
-    # Info Style
-    info_style = ParagraphStyle('InfoStyle', parent=styles['Normal'], fontSize=14, alignment=TA_CENTER, leading=20)
-    
-    elements.append(Paragraph(f"<b>School:</b> {school.name}", info_style))
-    elements.append(Paragraph(f"<b>Program:</b> {program.name}", info_style))
-    if branch_name:
-        elements.append(Paragraph(f"<b>Branch:</b> {branch_name}", info_style))
-    elements.append(Paragraph(f"<b>Academic Year:</b> {academic_year}", info_style))
-    
-    elements.append(Spacer(1, 1.5*inch))
-    
-    # Generated Date
-    date_style = ParagraphStyle('DateStyle', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER, textColor=colors.grey)
-    elements.append(Paragraph(f"Includes All Semester Syllabus Combined", info_style))
-    elements.append(Spacer(1, 0.2*inch))
-    elements.append(Paragraph(f"Generated On: {datetime.now().strftime('%B %d, %Y')}", date_style))
-
-    doc.build(elements)
-    return output_path
 
 
 # ─────────────────────────────────────────────────────────────────────────────

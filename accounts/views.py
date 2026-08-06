@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 import re
 import os
+from datetime import datetime
 from django.conf import settings
 from io import BytesIO
 
@@ -1192,6 +1193,8 @@ def generate_semester_pdf(request, semester_id):
     faculty = get_object_or_404(Faculty, user=request.user)
 
     table_rows = []
+    syllabi_list = []
+    
     for item in structure:
         subject = item.subject
         syllabus = getattr(subject, 'syllabus', None)
@@ -1206,7 +1209,15 @@ def generate_semester_pdf(request, semester_id):
             row['cL'] = syllabus.credit_lecture
             row['cP'] = syllabus.credit_practical
             row['cT'] = syllabus.credit_tutorial
-            row['credit_total'] = syllabus.credit_lecture + syllabus.credit_practical + syllabus.credit_tutorial
+            row['credits_total'] = syllabus.credit_lecture + syllabus.credit_practical + syllabus.credit_tutorial
+            
+            syllabi_list.append({
+                'syllabus': syllabus,
+                'total_hours': row['hours_total'],
+                'total_credits': row['credits_total'],
+                'semester_name': subject.semester if subject.semester else "Semester Not Defined"
+            })
+            
             try:
                 es = syllabus.evaluation_scheme
                 row['mid'] = es.mid_sem
@@ -1218,79 +1229,39 @@ def generate_semester_pdf(request, semester_id):
             except:
                 row.update({'mid':0,'cec':0,'end':0,'theory_total':0,'prac_marks':0,'grand_total':0})
         else:
-             row.update({'L':'-','P':'-','T':'-','hours_total':'-','cL':'-','cP':'-','cT':'-','credit_total':'-','mid':'-','cec':'-','end':'-','theory_total':'-','prac_marks':'-','grand_total':'-'})
+             row.update({'L':'-','P':'-','T':'-','hours_total':'-','cL':'-','cP':'-','cT':'-','credits_total':'-','mid':'-','cec':'-','end':'-','theory_total':'-','prac_marks':'-','grand_total':'-'})
         table_rows.append(row)
 
     # Academic Year
     academic_year = "Academic Year Not Defined"
     for item in structure:
-        # Check Subject first
         if hasattr(item.subject, 'academic_year') and item.subject.academic_year:
             academic_year = item.subject.academic_year
             break
-        # Fallback
         if hasattr(item.subject, 'syllabus') and item.subject.syllabus.faculty:
             if item.subject.syllabus.faculty.academic_year:
                 academic_year = item.subject.syllabus.faculty.academic_year
                 break
     
-    summary_context = {
-        'semester_name': semester.semester_number,
-        'rows': table_rows,
-        'school_name': semester.program.school.name,
-        'program_name': semester.program.name,
+    school_name = semester.program.school.name
+    program_name = semester.program.name
+    
+    context = {
+        'school_name': school_name,
+        'program_name': program_name,
+        'academic_year': academic_year,
         'logo_path': os.path.join(settings.BASE_DIR, 'static', 'images', 'gsfc_logo.png'),
-        'academic_year': academic_year
+        'generated_date': datetime.now().strftime('%B %d, %Y'),
+        'summary_rows': table_rows,
+        'syllabi_list': syllabi_list,
+        'is_full_program': False,
+        'branch_name': ''
     }
-    
-    summary_html = render_to_string('pdf/semester_summary.html', summary_context)
-    
-    def extract_body(html):
-        m = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
-        return m.group(1) if m else html
-    
-    def extract_style(html):
-        m = re.search(r'<style[^>]*>(.*?)</style>', html, re.DOTALL)
-        return m.group(1) if m else ""
 
-    full_body = extract_body(summary_html)
-    base_style = extract_style(summary_html) # Use summary style as base
-    
-    for item in structure:
-        subject = item.subject
-        if hasattr(subject, 'syllabus'):
-            syl = subject.syllabus
-            ctx = {
-                'faculty': syl.faculty,
-                'syllabus': syl,
-                'logo_path': summary_context['logo_path'],
-                'total_hours': syl.hours_lecture + syl.hours_practical + syl.hours_tutorial,
-                'total_credits': syl.credit_lecture + syl.credit_practical + syl.credit_tutorial,
-                'school_name': syl.faculty.school.name if syl.faculty and syl.faculty.school else semester.program.school.name,
-                'program_name': syl.faculty.program.name if syl.faculty and syl.faculty.program else semester.program.name,
-                'semester_name': subject.semester if subject.semester else semester.semester_number,
-                'academic_year': academic_year
-            }
-            sub_html = render_to_string('pdf/syllabus_canonical.html', ctx)
-            full_body += "<pdf:nextpage>"
-            full_body += extract_body(sub_html)
-            
-    final_html = f"""
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            {base_style}
-        </style>
-    </head>
-    <body>
-        {full_body}
-    </body>
-    </html>
-    """
+    html_string = render_to_string('pdf/combined_syllabus.html', context)
     
     result = BytesIO()
-    pdf = pisa.pisaDocument(BytesIO(final_html.encode("UTF-8")), result)
+    pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result)
     
     if not pdf.err:
         response = HttpResponse(result.getvalue(), content_type='application/pdf')
