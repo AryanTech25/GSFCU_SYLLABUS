@@ -158,6 +158,7 @@ class Syllabus(models.Model):
     rationale = models.TextField(blank=True, null=True)
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    last_completed_slide = models.IntegerField(default=0)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -165,6 +166,114 @@ class Syllabus(models.Model):
     # PDF Output
     pdf_file = models.FileField(upload_to='', null=True, blank=True)
     pdf_generated_at = models.DateTimeField(null=True, blank=True)
+
+    def is_complete(self):
+        """
+        Determine if all required sections are filled for PDF generation.
+        Returns: (is_complete: bool, missing_fields: list)
+        
+        Validates:
+        - Requirements 5.1: Check all required fields are filled
+        - Requirements 5.2: Validate required section completeness
+        - Requirements 5.3: Ensure CO-PO mappings exist for each course outcome
+        - Requirements 6.5: Ensure theory unit weightage sums to 100%
+        """
+        missing = []
+        
+        # Check basic fields (contact hours - at least one must be non-zero)
+        if not self.hours_lecture and not self.hours_practical:
+            missing.append('Contact Hours')
+        
+        # Check credits (at least one must be non-zero)
+        if not self.credit_lecture and not self.credit_practical:
+            missing.append('Credits')
+        
+        # Check prerequisites (at least 3 characters)
+        if not self.prerequisites or len(self.prerequisites.strip()) < 3:
+            missing.append('Prerequisites')
+        
+        # Check category
+        if not self.category:
+            missing.append('Category')
+        
+        # Check rationale
+        if not self.rationale:
+            missing.append('Rationale')
+        
+        # Check approval date
+        if not self.approval_date:
+            missing.append('Approval Date')
+        
+        # Check course objectives (at least 1)
+        if not self.objectives.exists():
+            missing.append('Course Objectives')
+        
+        # Check theory units
+        units = self.theory_units.all()
+        if not units.exists():
+            missing.append('Theory Units')
+        else:
+            # Check theory unit weightage sums to 100% (within 0.1% tolerance)
+            total_weight = sum(u.weightage for u in units)
+            if abs(total_weight - 100) > 0.1:
+                missing.append(f'Theory Unit Weightage (current: {total_weight}%, required: 100%)')
+        
+        # Check evaluation scheme
+        if not hasattr(self, 'evaluation_scheme'):
+            missing.append('Evaluation Scheme')
+        
+        # Check course outcomes (at least 1)
+        outcomes = self.course_outcomes.all()
+        if not outcomes.exists():
+            missing.append('Course Outcomes')
+        else:
+            # Check CO-PO mappings exist for each course outcome
+            for outcome in outcomes:
+                if not hasattr(outcome, 'mapping'):
+                    missing.append(f'CO-PO Mapping for {outcome.code}')
+                    break
+        
+        # Check learning resources (at least 1)
+        if not self.learning_resources.exists():
+            missing.append('Learning Resources')
+        
+        is_complete = len(missing) == 0
+        return is_complete, missing
+
+    def get_completion_percentage(self):
+        """
+        Calculate the completion percentage of this syllabus based on required sections.
+        Reuses is_complete() to determine how many required section checks are missing,
+        then returns an integer in the range 0-100.
+
+        The total number of distinct required-section checks matches the maximum number
+        of entries that is_complete() can add to its `missing` list (11 checks):
+          1. Contact Hours
+          2. Credits
+          3. Prerequisites
+          4. Category
+          5. Rationale
+          6. Approval Date
+          7. Course Objectives
+          8. Theory Units (existence)
+          9. Theory Unit Weightage (sums to 100%)
+         10. Evaluation Scheme
+         11. Course Outcomes (existence)
+         12. CO-PO Mapping (at least one outcome missing mapping)
+         13. Learning Resources
+
+        Returns:
+            int: Completion percentage (0-100)
+
+        Requirements: 7.5
+        """
+        TOTAL_CHECKS = 13  # Maximum distinct entries that is_complete() can add to missing
+
+        _, missing = self.is_complete()
+        completed = TOTAL_CHECKS - len(missing)
+        # Clamp to [0, TOTAL_CHECKS] in case of edge cases, then scale to 100
+        completed = max(0, min(completed, TOTAL_CHECKS))
+        return round((completed / TOTAL_CHECKS) * 100)
 
     def __str__(self):
         return f"Syllabus for {self.subject.course_name}"

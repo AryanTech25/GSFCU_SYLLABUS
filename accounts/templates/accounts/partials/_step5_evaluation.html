@@ -1,0 +1,67 @@
+<div class="sb-card">
+    <h2 class="sb-title">Evaluation Scheme</h2>
+
+    <div class="sb-eval-cols">
+        <div class="sb-eval-col">
+            <h4 class="sb-section-head">Theory Marks (Total: <span id="theory_total">0</span>/100)</h4>
+            <div class="sb-form-group">
+                <label class="sb-label">Mid-Semester</label>
+                <input type="number" class="sb-input eval-theory" name="eval_mid"
+                    value="{{ saved_evaluation.mid_sem|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">End-Semester</label>
+                <input type="number" class="sb-input eval-theory" name="eval_end"
+                    value="{{ saved_evaluation.end_sem|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">CEC – Attendance</label>
+                <input type="number" class="sb-input eval-theory" name="eval_cec_att"
+                    value="{{ saved_evaluation.cec_attendance|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">CEC – MCQ</label>
+                <input type="number" class="sb-input eval-theory" name="eval_cec_mcq"
+                    value="{{ saved_evaluation.cec_mcq|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">CEC – Assignment</label>
+                <input type="number" class="sb-input eval-theory" name="eval_cec_assign"
+                    value="{{ saved_evaluation.cec_assignment|default:0 }}" min="0" required>
+            </div>
+        </div>
+
+        <div class="sb-eval-col">
+            <h4 class="sb-section-head">Practical Marks (Total: <span id="practical_total">0</span>/50)</h4>
+            <div class="sb-form-group">
+                <label class="sb-label">Attendance</label>
+                <input type="number" class="sb-input eval-prac" name="eval_prac_att"
+                    value="{{ saved_evaluation.prac_attendance|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">Practical Exam</label>
+                <input type="number" class="sb-input eval-prac" name="eval_prac_exam"
+                    value="{{ saved_evaluation.prac_exam|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">Viva</label>
+                <input type="number" class="sb-input eval-prac" name="eval_prac_viva"
+                    value="{{ saved_evaluation.prac_viva|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">Journal</label>
+                <input type="number" class="sb-input eval-prac" name="eval_prac_journal"
+                    value="{{ saved_evaluation.prac_journal|default:0 }}" min="0" required>
+            </div>
+            <div class="sb-form-group">
+                <label class="sb-label">Discipline</label>
+                <input type="number" class="sb-input eval-prac" name="eval_prac_disc"
+                    value="{{ saved_evaluation.prac_discipline|default:0 }}" min="0" required>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="sb-actions">
+    <button type="button" class="sb-btn sb-btn-secondary" data-step-prev="4">⬅ Back</button>
+    <button type="button" class="sb-btn sb-btn-primary" data-step-next="6">Next: Outcome Mapping ➡</button>
+</div>

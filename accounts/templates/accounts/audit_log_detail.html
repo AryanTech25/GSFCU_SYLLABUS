@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Log #{{ log.pk }} | GSFC Curriculum Builder{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Audit Log Detail page styles ── */
+  .breadcrumb {
+    font-size: .85rem;
+    color: #6b7280;
+    margin-bottom: 1.25rem;
+  }
+  .breadcrumb a { color: var(--gsfc-blue); text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb span { margin: 0 .4rem; }
+
+  .detail-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.09);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .detail-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.1rem 1.5rem;
+    background: var(--gsfc-blue);
+    color: white;
+  }
+  .detail-card-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .detail-card-header .log-id {
+    font-size: .85rem;
+    opacity: .75;
+  }
+  .detail-body {
+    padding: 0;
+  }
+
+  /* field rows */
+  .field-row {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    border-bottom: 1px solid #f0f4f8;
+    align-items: start;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .field-label {
+    padding: .85rem 1.25rem;
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #6b7280;
+    background: #f8fafc;
+    border-right: 1px solid #f0f4f8;
+  }
+  .field-value {
+    padding: .85rem 1.25rem;
+    font-size: .95rem;
+    color: #1f2937;
+    word-break: break-word;
+  }
+  .field-value.mono {
+    font-family: "Courier New", Courier, monospace;
+    font-size: .88rem;
+    color: #374151;
+  }
+  .field-value.empty { color: #9ca3af; font-style: italic; }
+
+  /* action badge */
+  .action-badge {
+    display: inline-block;
+    padding: .25rem .75rem;
+    border-radius: 9999px;
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .action-create { background: #dcfce7; color: #166534; }
+  .action-update { background: #dbeafe; color: #1e40af; }
+  .action-delete { background: #fee2e2; color: #991b1b; }
+  .action-submit { background: #fef9c3; color: #854d0e; }
+  .action-view   { background: #f3e8ff; color: #6b21a8; }
+
+  /* JSON code blocks */
+  .json-block {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: "Courier New", Courier, monospace;
+    font-size: .83rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* nav buttons */
+  .detail-nav {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .btn-back {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    padding: .55rem 1.2rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: .9rem;
+    transition: background .15s;
+  }
+  .btn-back:hover { background: #f3f4f6; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- breadcrumb -->
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="{% url 'faculty_dashboard' %}">Dashboard</a>
+  <span>›</span>
+  <a href="{% url 'audit_log_list' %}">Audit Logs</a>
+  <span>›</span>
+  Entry #{{ log.pk }}
+</nav>
+
+<!-- main card -->
+<div class="detail-card">
+  <div class="detail-card-header">
+    <h2>Audit Log Entry</h2>
+    <span class="log-id">#{{ log.pk }}</span>
+  </div>
+
+  <div class="detail-body">
+
+    <div class="field-row">
+      <div class="field-label">Timestamp</div>
+      <div class="field-value">{{ log.timestamp|date:"l, d F Y — H:i:s" }} (UTC)</div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">User</div>
+      <div class="field-value">
+        {% if log.user %}
+          {{ log.user.get_full_name|default:log.user.username }}
+          <span style="color:#9ca3af;font-size:.85rem;"> — {{ log.user.username }}</span>
+        {% else %}
+          <span class="empty">—</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Faculty</div>
+      <div class="field-value">
+        {% if log.syllabus and log.syllabus.faculty %}
+          {{ log.syllabus.faculty.full_name }}
+          <span style="color:#9ca3af;font-size:.85rem;"> — {{ log.syllabus.faculty.faculty_id }}</span>
+        {% else %}
+          <span class="empty">—</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Subject</div>
+      <div class="field-value">
+        {% if log.syllabus and log.syllabus.subject %}
+          <strong>{{ log.syllabus.subject.course_code }}</strong> — {{ log.syllabus.subject.course_name }}
+        {% else %}
+          <span class="empty">—</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Action</div>
+      <div class="field-value">
+        {% with a=log.action_type|lower %}
+        <span class="action-badge action-{{ a }}">{{ log.action_type }}</span>
+        {% endwith %}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Model</div>
+      <div class="field-value mono">{{ log.model_name }}</div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Field changed</div>
+      <div class="field-value mono">
+        {% if log.field_name %}{{ log.field_name }}{% else %}<span class="empty">—</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Old value</div>
+      <div class="field-value">
+        {% if log.old_value %}
+        <pre class="json-block">{{ log.old_value }}</pre>
+        {% else %}<span class="empty">None / not set</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">New value</div>
+      <div class="field-value">
+        {% if log.new_value %}
+        <pre class="json-block">{{ log.new_value }}</pre>
+        {% else %}<span class="empty">None / not set</span>{% endif %}
+      </div>
+    </div>
+
+    {% if log.description %}
+    <div class="field-row">
+      <div class="field-label">Description</div>
+      <div class="field-value">{{ log.description }}</div>
+    </div>
+    {% endif %}
+
+  </div><!-- /detail-body -->
+</div><!-- /detail-card -->
+
+<div class="detail-nav">
+  <a href="{% url 'audit_log_list' %}" class="btn-back">← Back to Audit Logs</a>
+</div>
+{% endblock %}

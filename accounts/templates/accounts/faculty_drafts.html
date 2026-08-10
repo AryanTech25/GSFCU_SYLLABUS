@@ -2,61 +2,282 @@
 
 {% block title %}My Drafts | GSFC Curriculum Builder{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* ── Drafts page styles ── */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .drafts-card {
+    background: white;
+    padding: 0;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.09);
+    overflow: hidden;
+  }
+  .drafts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .92rem;
+  }
+  .drafts-table thead tr {
+    background: var(--gsfc-blue);
+    color: white;
+  }
+  .drafts-table thead th {
+    padding: .9rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  /* Task 13.3: row background by completeness */
+  .drafts-table tbody tr.row-complete {
+    background: #f0fdf4;
+    border-bottom: 1px solid #bbf7d0;
+  }
+  .drafts-table tbody tr.row-incomplete {
+    background: #fff;
+    border-bottom: 1px solid #f0f4f8;
+  }
+  .drafts-table tbody tr:hover { filter: brightness(.97); }
+  .drafts-table tbody td { padding: .8rem 1rem; vertical-align: middle; }
+
+  /* Task 13.1: completeness badge */
+  .badge-complete {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    background: #dcfce7;
+    color: #166534;
+    padding: .25rem .7rem;
+    border-radius: 9999px;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+  .badge-incomplete {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    background: #fef9c3;
+    color: #854d0e;
+    padding: .25rem .7rem;
+    border-radius: 9999px;
+    font-size: .78rem;
+    font-weight: 600;
+  }
+
+  /* Task 13.2: progress bar + tooltip */
+  .pct-bar-wrap {
+    margin-top: .3rem;
+    background: #e5e7eb;
+    border-radius: 9999px;
+    height: 6px;
+    width: 80px;
+    overflow: hidden;
+  }
+  .pct-bar {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #16a34a, #4ade80);
+    transition: width .3s;
+  }
+  .pct-bar.low  { background: linear-gradient(90deg, #dc2626, #f87171); }
+  .pct-bar.mid  { background: linear-gradient(90deg, #d97706, #fbbf24); }
+
+  /* tooltip for missing fields */
+  [data-tooltip] { position: relative; }
+  [data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #f8fafc;
+    padding: .5rem .75rem;
+    border-radius: 6px;
+    font-size: .78rem;
+    white-space: pre-line;
+    min-width: 180px;
+    max-width: 280px;
+    text-align: left;
+    z-index: 100;
+    pointer-events: none;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  }
+  [data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 1px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1e293b;
+    z-index: 101;
+  }
+
+  /* action buttons */
+  .btn-open {
+    background: var(--gsfc-blue);
+    color: white;
+    padding: .45rem 1rem;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: .85rem;
+    font-weight: 600;
+    display: inline-block;
+    transition: opacity .15s;
+  }
+  .btn-open:hover { opacity: .85; }
+  .btn-pdf {
+    background: #1e293b;
+    color: white;
+    padding: .45rem 1rem;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: .85rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-left: .4rem;
+    transition: opacity .15s;
+  }
+  .btn-pdf:hover { opacity: .85; }
+  /* Task 13.4: disabled PDF button */
+  .btn-pdf-disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    padding: .45rem 1rem;
+    border-radius: 5px;
+    font-size: .85rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-left: .4rem;
+    cursor: not-allowed;
+    border: none;
+    position: relative;
+  }
+
+  /* empty state */
+  .empty-row td { padding: 3rem; text-align: center; color: #9ca3af; }
+  .empty-row a { color: var(--gsfc-blue); text-decoration: underline; }
+
+  /* back button */
+  .btn-back {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    padding: .5rem 1rem;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: .9rem;
+  }
+  .btn-back:hover { background: #f3f4f6; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
-    <h1 class="section-title">My Draft Syllabus</h1>
-    <a href="{% url 'faculty_dashboard' %}" class="btn btn-outline"
-        style="background: white; border: 1px solid var(--gsfc-border); padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; color: var(--gsfc-blue);">Back
-        to Dashboard</a>
+<!-- ── Page header ── -->
+<div class="page-header">
+  <h1 class="section-title">My Draft Syllabi</h1>
+  <a href="{% url 'faculty_dashboard' %}" class="btn-back">← Back to Dashboard</a>
 </div>
 
-<div class="card"
-    style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-    <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr
-                    style="background-color: var(--gsfc-blue); color: white; border-bottom: 2px solid var(--gsfc-border);">
-                    <th style="padding: 1rem; text-align: left; color: white;">Course Code</th>
-                    <th style="padding: 1rem; text-align: left; color: white;">Course Name</th>
-                    <th style="padding: 1rem; text-align: left; color: white;">Semester</th>
-                    <th style="padding: 1rem; text-align: left; color: white;">Last Updated</th>
-                    <th style="padding: 1rem; text-align: left; color: white;">Status</th>
-                    <th style="padding: 1rem; text-align: left; color: white;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for draft in drafts %}
-                <tr style="border-bottom: 1px solid #edf2f7; transition: background-color 0.2s;">
-                    <td style="padding: 1rem;">{{ draft.subject.course_code }}</td>
-                    <td style="padding: 1rem;">{{ draft.subject.course_name }}</td>
-                    <td style="padding: 1rem;">{{ draft.subject.semester|default:draft.faculty.semester }}</td>
-                    <td style="padding: 1rem;">{{ draft.updated_at|date:"M d, Y H:i" }}</td>
-                    <td style="padding: 1rem;">
-                        <span
-                            style="background-color: #dcfce7; color: var(--gsfc-success); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600;">Draft</span>
-                    </td>
-                    <td style="padding: 1rem;">
-                        <a href="{% url 'syllabus_builder' %}?draft_id={{ draft.id }}"
-                            style="background-color: var(--gsfc-blue); color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem; font-weight: 500; display: inline-block;">
-                            Open Draft
-                        </a>
-                        <a href="{% url 'generate_pdf' draft.id %}"
-                            style="background-color: #4a5568; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem; font-weight: 500; display: inline-block; margin-left: 0.5rem;">
-                            Generate PDF
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" style="padding: 3rem; text-align: center; color: #718096;">
-                        No drafts found. <a href="{% url 'faculty_dashboard' %}"
-                            style="color: var(--gsfc-blue); text-decoration: underline;">Create a new syllabus</a>.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<div class="drafts-card">
+  <div style="overflow-x: auto;">
+    <table class="drafts-table">
+      <thead>
+        <tr>
+          <th>Course Code</th>
+          <th>Course Name</th>
+          <th>Semester</th>
+          <th>Last Updated</th>
+          <th>Status</th>
+          <!-- Task 13.1: Completeness column (Requirements: 7.1, 7.2, 7.5) -->
+          <th>Completeness</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in drafts_data %}
+        {% with d=item.draft %}
+        <!-- Task 13.3: different row class by completeness -->
+        <tr class="{% if item.is_complete %}row-complete{% else %}row-incomplete{% endif %}">
+          <td><strong>{{ d.subject.course_code }}</strong></td>
+          <td>{{ d.subject.course_name }}</td>
+          <td>{{ d.subject.semester|default:d.faculty.semester }}</td>
+          <td>{{ d.updated_at|date:"d M Y H:i" }}</td>
+          <td>
+            <span style="background:#e0e7ff;color:#3730a3;padding:.2rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:700;">
+              Draft
+            </span>
+          </td>
+
+          <!-- Task 13.1 + 13.2: completeness badge with tooltip for missing fields -->
+          <td>
+            {% if item.is_complete %}
+              <span class="badge-complete">✓ Complete</span>
+            {% else %}
+              {% if item.missing %}
+              {# Build tooltip text from missing field list #}
+              {% with tip_text=item.missing|join:"\n• " %}
+              <span class="badge-incomplete" data-tooltip="Missing:&#10;• {{ tip_text }}">
+                {{ item.pct }}% ▾
+              </span>
+              {% endwith %}
+              {% else %}
+              <span class="badge-incomplete">{{ item.pct }}%</span>
+              {% endif %}
+              <!-- mini progress bar -->
+              <div class="pct-bar-wrap" style="margin-top:.35rem;">
+                <div class="pct-bar {% if item.pct < 40 %}low{% elif item.pct < 75 %}mid{% endif %}"
+                     style="width:{{ item.pct }}%"></div>
+              </div>
+            {% endif %}
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <a href="{% url 'syllabus_builder' %}?draft_id={{ d.id }}" class="btn-open">
+              ✏ Edit
+            </a>
+
+            {% if item.is_complete %}
+            <!-- Task 13.4: PDF enabled for complete drafts -->
+            <a href="{% url 'generate_pdf' d.id %}" class="btn-pdf">
+              📄 PDF
+            </a>
+            {% else %}
+            <!-- Task 13.4: PDF disabled for incomplete drafts (Requirements: 6.3, 6.4) -->
+            {% if item.missing %}
+            {% with tip_text=item.missing|join:", " %}
+            <span class="btn-pdf-disabled"
+                  data-tooltip="Complete first:&#10;• {{ tip_text }}"
+                  aria-disabled="true"
+                  title="Syllabus is incomplete — finish all required sections before generating PDF.">
+              📄 PDF
+            </span>
+            {% endwith %}
+            {% else %}
+            <span class="btn-pdf-disabled" title="Syllabus is incomplete.">📄 PDF</span>
+            {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr class="empty-row">
+          <td colspan="7">
+            No drafts found. <a href="{% url 'faculty_dashboard' %}">Create a new syllabus</a>.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

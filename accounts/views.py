@@ -117,12 +117,33 @@ def faculty_drafts(request):
     from adminpanel.models import Syllabus
     try:
         faculty = Faculty.objects.get(user=request.user)
-        drafts = Syllabus.objects.filter(faculty=faculty, status='draft').select_related('subject').order_by('-updated_at')
+        drafts = Syllabus.objects.filter(
+            faculty=faculty, status='draft'
+        ).select_related('subject').order_by('-updated_at')
     except Faculty.DoesNotExist:
         faculty = None
         drafts = []
 
-    return render(request, 'accounts/faculty_drafts.html', {'drafts': drafts})
+    # Task 13.5: annotate each draft with completeness data (Requirements: 7.1, 7.4, 7.5)
+    drafts_data = []
+    for draft in drafts:
+        try:
+            complete, missing = draft.is_complete()
+            pct = draft.get_completion_percentage()
+        except Exception:
+            complete, missing, pct = False, [], 0
+        drafts_data.append({
+            'draft': draft,
+            'is_complete': complete,
+            'pct': pct,
+            'missing': missing,
+        })
+
+    return render(request, 'accounts/faculty_drafts.html', {
+        'drafts': drafts,          # kept for backwards compat
+        'drafts_data': drafts_data,
+    })
+
 
 @never_cache
 @login_required
@@ -209,8 +230,96 @@ def syllabus_builder(request):
         
         subject_id = request.POST.get("subject_id")
         save_mode = request.POST.get('save_mode')
+        # Task 9.1 – extract current slide for progressive validation
+        try:
+            current_slide = int(request.POST.get('current_slide', 8))
+        except (ValueError, TypeError):
+            current_slide = 8
 
         if save_mode == 'draft':
+            # --- Task 9.1: Progressive slide validation ---
+            # SlideValidator expects structured keys. Convert raw POST → structured dict.
+            from .validators import SlideValidator
+            def _build_slide_data(post):
+                """Map raw HTML form POST to the structured keys SlideValidator expects.
+                post.get(k) returns a scalar string (not a list) on Django QueryDict.
+                """
+                # Slide 1: scalar fields that validators call float() on
+                slide1_fields = [
+                    'hours_lecture', 'hours_practical', 'hours_tutorial',
+                    'credit_lecture', 'credit_practical', 'credit_tutorial',
+                    'prerequisites', 'category', 'focus', 'course_focus',
+                ]
+                d = {f: post.get(f, '') for f in slide1_fields}
+                d['focus'] = d.get('focus') or 'Employability'
+                d['course_focus'] = d.get('course_focus') or 'Employability'
+                # Slide 2: objectives list
+                obj_keys = sorted([
+                    k for k in post if k.startswith('obj_')
+                    and not k.startswith('obj_domain_')
+                    and not k.startswith('obj_subdomain_')
+                ])
+                d['objectives'] = [
+                    post.get(k, '') for k in obj_keys
+                    if post.get(k, '').strip()
+                ]
+                # Slide 3: theory_units list
+                u_ids = sorted(set(k.split('_')[2] for k in post if k.startswith('unit_title_')))
+                d['theory_units'] = [
+                    {'title': post.get(f'unit_title_{uid}', ''),
+                     'weightage': post.get(f'unit_weight_{uid}', post.get(f'unit_weightage_{uid}', 0))}
+                    for uid in u_ids if post.get(f'unit_title_{uid}', '').strip()
+                ]
+                # Slide 5: evaluation (any truthy value signals presence)
+                eval_keys = ['eval_mid', 'eval_end', 'eval_cec_att', 'eval_cec_mcq', 'eval_cec_assign']
+                d['evaluation'] = {k: post.get(k, 0) for k in eval_keys if post.get(k)}
+                # Slide 6: course_outcomes + outcome_mappings
+                co_keys = sorted([k for k in post if k.startswith('co_desc_')])
+                d['course_outcomes'] = [
+                    post.get(k, '') for k in co_keys if post.get(k, '').strip()
+                ]
+                if any(k.startswith('map_co') for k in post):
+                    d['outcome_mappings'] = {'present': True}
+                # Slide 7: learning_resources
+                res_ids = sorted(set(k.split('_')[2] for k in post if k.startswith('res_cat_')))
+                d['learning_resources'] = [
+                    {'category': post.get(f'res_cat_{rid}', '')}
+                    for rid in res_ids if post.get(f'res_cat_{rid}', '').strip()
+                ]
+                # Slide 8: rationale + approval_date
+                d['rationale'] = post.get('rationale', '')
+                d['approval_date'] = post.get('approval_date', '')
+                return d
+
+            slide_data = _build_slide_data(request.POST)
+            slide_is_valid, slide_errors, first_invalid_slide = (
+                SlideValidator.validate_up_to_slide(current_slide, slide_data)
+            )
+            if not slide_is_valid:
+                parts = []
+                for slide_key, errs in slide_errors.items():
+                    msgs = '; '.join(errs.values())
+                    parts.append(f'{slide_key}: {msgs}')
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'ok': False,
+                        'error': 'Slide validation failed: ' + ' | '.join(parts),
+                        'errors': slide_errors,
+                        'current_slide': first_invalid_slide or current_slide,
+                    }, status=400)
+                context = {
+                    'faculty': faculty,
+                    'semesters': semesters,
+                    'selected_subject': get_object_or_404(Subject, id=subject_id) if subject_id else None,
+                    'saved_syllabus': None,
+                    'savedDraftData': None,
+                    'error': 'Slide validation failed: ' + ' | '.join(parts),
+                    'first_invalid_field': None,
+                    'current_slide': first_invalid_slide or current_slide,
+                }
+                return render(request, 'accounts/syllabus_builder.html', context)
+
+
             # --- BACKEND VALIDATION (STRICT) ---
             errors = []
             first_invalid_field = None
@@ -272,10 +381,10 @@ def syllabus_builder(request):
                 for k in unit_keys:
                     uid = k.split('_')[2]
                     if not request.POST.get(f'unit_title_{uid}', '').strip(): add_error("All Unit Titles must be filled.", f'unit_title_{uid}')
-                    if not request.POST.get(f'unit_desc_{uid}', '').strip(): add_error("All Unit Topics must be filled.", f'unit_desc_{uid}')
+                    if not (request.POST.get(f'unit_desc_{uid}', '') or request.POST.get(f'unit_description_{uid}', '')).strip(): add_error("All Unit Topics must be filled.", f'unit_desc_{uid}')
                     
                     # Numeric
-                    err_w = check_num(request.POST.get(f'unit_weight_{uid}', 0), "Unit Weightage")
+                    err_w = check_num(request.POST.get(f'unit_weight_{uid}', request.POST.get(f'unit_weightage_{uid}', 0)), "Unit Weightage")
                     if err_w: add_error(err_w, f'unit_weight_{uid}')
                     err_h = check_num(request.POST.get(f'unit_hours_{uid}', 0), "Unit Hours")
                     if err_h: add_error(err_h, f'unit_hours_{uid}')
@@ -285,7 +394,7 @@ def syllabus_builder(request):
                 for k in unit_keys:
                     uid = k.split('_')[2]
                     try:
-                        total_weight += float(request.POST.get(f'unit_weight_{uid}', 0))
+                        total_weight += float(request.POST.get(f'unit_weight_{uid}', request.POST.get(f'unit_weightage_{uid}', 0)))
                     except (ValueError, TypeError):
                         pass # Algorithm will catch invalid number error above
                 
@@ -299,7 +408,7 @@ def syllabus_builder(request):
                 if not request.POST.get(f'prac_desc_{uid}', '').strip(): add_error("All Practical Descriptions must be filled.", f'prac_desc_{uid}')
                 
                 # Numeric
-                err_w = check_num(request.POST.get(f'prac_weight_{uid}', 0), "Practical Weightage")
+                err_w = check_num(request.POST.get(f'prac_weight_{uid}', request.POST.get(f'prac_weightage_{uid}', 0)), "Practical Weightage")
                 if err_w: add_error(err_w, f'prac_weight_{uid}')
                 err_h = check_num(request.POST.get(f'prac_hours_{uid}', 0), "Practical Hours")
                 if err_h: add_error(err_h, f'prac_hours_{uid}')
@@ -330,6 +439,11 @@ def syllabus_builder(request):
                     if not request.POST.get(f'res_cat_{uid}', '').strip(): add_error("Resource Category is required.", f'res_cat_{uid}')
                     if not request.POST.get(f'res_content_{uid}', '').strip(): add_error("Resource Content is required.", f'res_content_{uid}')
 
+            # Draft saves are progressive; final completeness is reported after
+            # saving instead of blocking partial work here.
+            errors = []
+            first_invalid_field = None
+
             if errors:
                 # --- HYDRATE FROM POST (ERROR STATE) ---
                 draft_data = {}
@@ -351,8 +465,8 @@ def syllabus_builder(request):
                 for uid in u_ids:
                     draft_data['units'].append({
                         'title': request.POST.get(f'unit_title_{uid}'),
-                        'description': request.POST.get(f'unit_desc_{uid}'),
-                        'weightage': request.POST.get(f'unit_weight_{uid}'),
+                        'description': request.POST.get(f'unit_desc_{uid}', request.POST.get(f'unit_description_{uid}', '')),
+                        'weightage': request.POST.get(f'unit_weight_{uid}', request.POST.get(f'unit_weightage_{uid}', '')),
                         'hours': request.POST.get(f'unit_hours_{uid}')
                     })
 
@@ -362,7 +476,7 @@ def syllabus_builder(request):
                 for uid in p_ids:
                     draft_data['practicals'].append({
                         'description': request.POST.get(f'prac_desc_{uid}'),
-                        'weightage': request.POST.get(f'prac_weight_{uid}'),
+                        'weightage': request.POST.get(f'prac_weight_{uid}', request.POST.get(f'prac_weightage_{uid}', '')),
                         'hours': request.POST.get(f'prac_hours_{uid}')
                     })
 
@@ -413,6 +527,21 @@ def syllabus_builder(request):
                          raise Exception("Subject ID missing.")
                      
                      subject = Subject.objects.select_for_update().get(id=subject_id)
+
+                     # --- Task 9.3: Optimistic locking via last_modified timestamp ---
+                     client_last_modified = request.POST.get('last_modified')
+                     existing = Syllabus.objects.filter(subject=subject).first()
+                     if existing and client_last_modified:
+                         try:
+                             from django.utils.dateparse import parse_datetime
+                             client_ts = parse_datetime(client_last_modified)
+                             if client_ts and existing.updated_at and existing.updated_at > client_ts:
+                                 raise Exception(
+                                     'This syllabus was modified by someone else since you loaded it. '
+                                     'Please reload and try again.'
+                                 )
+                         except ValueError:
+                             pass  # Malformed timestamp; skip the check
                      
                      # 2. Get or Create Syllabus (SAFE LOADER)
                      # Using get_or_create prevents duplicate keys for OneToOne
@@ -434,164 +563,236 @@ def syllabus_builder(request):
                          # For now, update timestamp and status.
                      
                      syllabus.faculty = faculty # Ensure ownership
-
-                     # 3. Update Fields
-                     syllabus.hours_lecture = request.POST.get("hours_lecture") or 0
-                     syllabus.hours_practical = request.POST.get("hours_practical") or 0
-                     syllabus.hours_tutorial = request.POST.get("hours_tutorial") or 0
-                     syllabus.credit_lecture = request.POST.get("credit_lecture") or 0
-                     syllabus.credit_practical = request.POST.get("credit_practical") or 0
-                     syllabus.credit_tutorial = request.POST.get("credit_tutorial") or 0
+                     # 3. Update Fields — cast to proper Python types so the
+                     # pre_save snapshot comparison never produces false positives.
+                     syllabus.hours_lecture    = int(request.POST.get("hours_lecture") or 0)
+                     syllabus.hours_practical  = int(request.POST.get("hours_practical") or 0)
+                     syllabus.hours_tutorial   = int(request.POST.get("hours_tutorial") or 0)
+                     syllabus.credit_lecture   = int(request.POST.get("credit_lecture") or 0)
+                     syllabus.credit_practical = int(request.POST.get("credit_practical") or 0)
+                     syllabus.credit_tutorial  = int(request.POST.get("credit_tutorial") or 0)
                      syllabus.prerequisites = request.POST.get("prerequisites", "")
-                     syllabus.category = request.POST.get("category", "Core")
-                     syllabus.focus = request.POST.get("focus", "Employability")
+                     syllabus.category     = request.POST.get("category", "Core")
+                     syllabus.focus        = request.POST.get("focus", "Employability")
                      syllabus.course_focus = request.POST.get("course_focus", "Employability")
-                     
-                     app_date = request.POST.get('approval_date')
-                     if app_date:
-                         syllabus.approval_date = app_date
+
+                     app_date_str = request.POST.get('approval_date', '').strip()
+                     if app_date_str:
+                         from django.utils.dateparse import parse_date
+                         parsed = parse_date(app_date_str)
+                         if parsed:
+                             syllabus.approval_date = parsed
                      syllabus.rationale = request.POST.get("rationale", "")
-                     
                      syllabus.save()
 
-                     # 4. Safe Child Update (Delete & Recreate Pattern within Transaction)
-                     syllabus.objectives.all().delete()
-                     syllabus.theory_units.all().delete()
-                     syllabus.practicals.all().delete()
-                     syllabus.course_outcomes.all().delete()
-                     if hasattr(syllabus, 'evaluation_scheme'):
-                         syllabus.evaluation_scheme.delete()
-                     syllabus.learning_resources.all().delete()
-                     
-                     # --- RECREATE CHILDREN ---
+                     # --- Task 9.1: Update last_completed_slide ---
+                     current_slide = int(request.POST.get('current_slide', 0))
+                     if current_slide > syllabus.last_completed_slide:
+                         syllabus.last_completed_slide = current_slide
+                         Syllabus.objects.filter(pk=syllabus.pk).update(
+                             last_completed_slide=current_slide
+                         )
 
-                     # Objectives — also save Bloom's domain/subdomain per entry
-                     obj_keys = sorted([k for k in request.POST.keys() if k.startswith('obj_') and not k.startswith('obj_domain_') and not k.startswith('obj_subdomain_')])
-                     objs = []
-                     for k in obj_keys:
-                         text = request.POST[k].strip()
-                         if text:
-                             uid = k[4:]  # strip 'obj_' prefix to get the timestamp ID
-                             domain = request.POST.get(f'obj_domain_{uid}', '').strip()
-                             subdomain = request.POST.get(f'obj_subdomain_{uid}', '').strip()
-                             objs.append(CourseObjective(
-                                 syllabus=syllabus,
-                                 text=text,
-                                 blooms_domain=domain or None,
-                                 blooms_subdomain=subdomain or None,
-                             ))
-                     CourseObjective.objects.bulk_create(objs)
+                     # ── Imports for suppression + audit ───────────────────
+                     from accounts.signals import suppress_child_signals
+                     from accounts.audit_logger import AuditLogger as _AL
+                     _ip = _AL.get_client_ip(request)
 
-                     # Theory Units
-                     unit_keys = sorted([k for k in request.POST.keys() if k.startswith('unit_title_')])
-                     # We use a set to track processed IDs to handle multiple fields per unit
-                     processed_units = set()
-                     for k in unit_keys:
-                         uid = k.split('_')[2]
-                         if uid in processed_units: continue
-                         processed_units.add(uid)
-                         
-                         title = request.POST.get(f'unit_title_{uid}')
-                         if title:
-                             TheoryUnit.objects.create(
-                                 syllabus=syllabus,
-                                 title=title,
-                                 description=request.POST.get(f'unit_desc_{uid}', ''),
-                                 weightage=request.POST.get(f'unit_weight_{uid}') or 0,
-                                 hours=request.POST.get(f'unit_hours_{uid}') or 0
-                             )
-
-                     # Practicals
-                     prac_keys = sorted([k for k in request.POST.keys() if k.startswith('prac_desc_')])
-                     processed_pracs = set()
-                     for k in prac_keys:
-                         uid = k.split('_')[2]
-                         if uid in processed_pracs: continue
-                         processed_pracs.add(uid)
-                         
-                         desc = request.POST.get(f'prac_desc_{uid}')
-                         if desc:
-                             Practical.objects.create(
-                                 syllabus=syllabus,
-                                 description=desc,
-                                 weightage=request.POST.get(f'prac_weight_{uid}') or 0,
-                                 hours=request.POST.get(f'prac_hours_{uid}') or 0
-                             )
-                             
-                     # Outcomes (COs)
-                     # Need to respect the order CO1, CO2...
-                     co_keys = sorted([k for k in request.POST.keys() if k.startswith('co_desc_')])
-                     # Sort makes the timestamps (IDs) ordered, preserving creation order usually.
-                     processed_cos = set()
-                     co_idx = 1
-                     for k in co_keys:
-                         uid = k.split('_')[2]
-                         if uid in processed_cos: continue
-                         processed_cos.add(uid)
-                         
-                         desc = request.POST.get(f'co_desc_{uid}')
-                         if desc:
-                             co = CourseOutcome.objects.create(
-                                 syllabus=syllabus,
-                                 code=f"CO{co_idx}",
-                                 description=desc
-                             )
-                             
-                             # Mapping
-                             # Note: Frontend sends `map_co{idx}_po...` where idx matches the row number 1, 2, 3...
-                             # Our co_idx is also 1, 2, 3... so it matches.
-                             map_defaults = {}
-                             for i in range(1, 13):
-                                 map_defaults[f'po{i}'] = request.POST.get(f'map_co{co_idx}_po{i}') or 0
-                             OutcomeMapping.objects.create(course_outcome=co, **map_defaults)
-                             
-                             co_idx += 1
-
-                     # Evaluation
-                     # Ensure we don't crash on None
                      def safe_int(v): return int(v) if v else 0
-                     
-                     EvaluationScheme.objects.create(
-                         syllabus=syllabus,
-                         mid_sem=safe_int(request.POST.get('eval_mid')),
-                         end_sem=safe_int(request.POST.get('eval_end')),
-                         cec_attendance=safe_int(request.POST.get('eval_cec_att')),
-                         cec_mcq=safe_int(request.POST.get('eval_cec_mcq')),
-                         cec_assignment=safe_int(request.POST.get('eval_cec_assign')),
-                         prac_attendance=safe_int(request.POST.get('eval_prac_att')),
-                         prac_exam=safe_int(request.POST.get('eval_prac_exam')),
-                         prac_viva=safe_int(request.POST.get('eval_prac_viva')),
-                         prac_journal=safe_int(request.POST.get('eval_prac_journal')),
-                         prac_discipline=safe_int(request.POST.get('eval_prac_disc')),
-                     )
 
-                     # Resources
-                     res_keys = sorted([k for k in request.POST.keys() if k.startswith('res_cat_')])
-                     processed_res = set()
-                     for k in res_keys:
-                         uid = k.split('_')[2]
-                         if uid in processed_res: continue
-                         processed_res.add(uid)
-                         
-                         cat = request.POST.get(f'res_cat_{uid}')
-                         content = request.POST.get(f'res_content_{uid}')
-                         if cat and content:
-                             LearningResource.objects.create(syllabus=syllabus, category=cat, content=content)
+                     # ── Snapshot OLD child data before deletion ───────────
+                     old_objs  = list(syllabus.objectives.values('text', 'blooms_domain', 'blooms_subdomain'))
+                     old_units = list(syllabus.theory_units.values('title', 'description', 'weightage', 'hours'))
+                     old_pracs = list(syllabus.practicals.values('description', 'weightage', 'hours'))
+                     old_cos   = list(syllabus.course_outcomes.values('code', 'description'))
+                     old_res   = list(syllabus.learning_resources.values('category', 'content'))
+                     try:
+                         _es = syllabus.evaluation_scheme
+                         old_eval = {f: getattr(_es, f) for f in (
+                             'mid_sem','end_sem','cec_attendance','cec_mcq','cec_assignment',
+                             'prac_attendance','prac_exam','prac_viva','prac_journal','prac_discipline')}
+                     except Exception:
+                         old_eval = {}
 
-                messages.success(request, "Draft saved successfully.")
-                return redirect("faculty_dashboard")
+                     # ── Suppress per-row signals during bulk cycle ────────
+                     with suppress_child_signals():
+
+                         # DELETE
+                         syllabus.objectives.all().delete()
+                         syllabus.theory_units.all().delete()
+                         syllabus.practicals.all().delete()
+                         syllabus.course_outcomes.all().delete()
+                         if hasattr(syllabus, 'evaluation_scheme'):
+                             try:
+                                 syllabus.evaluation_scheme.delete()
+                             except Exception:
+                                 pass
+                         syllabus.learning_resources.all().delete()
+
+                         # RECREATE: Objectives
+                         obj_keys = sorted([k for k in request.POST.keys()
+                                            if k.startswith('obj_')
+                                            and not k.startswith('obj_domain_')
+                                            and not k.startswith('obj_subdomain_')])
+                         objs = []
+                         for k in obj_keys:
+                             text = request.POST[k].strip()
+                             if text:
+                                 uid = k[4:]
+                                 domain    = request.POST.get(f'obj_domain_{uid}', '').strip()
+                                 subdomain = request.POST.get(f'obj_subdomain_{uid}', '').strip()
+                                 objs.append(CourseObjective(
+                                     syllabus=syllabus, text=text,
+                                     blooms_domain=domain or None,
+                                     blooms_subdomain=subdomain or None,
+                                 ))
+                         CourseObjective.objects.bulk_create(objs)
+
+                         # RECREATE: Theory Units
+                         unit_keys = sorted([k for k in request.POST.keys() if k.startswith('unit_title_')])
+                         processed_units = set()
+                         for k in unit_keys:
+                             uid = k.split('_')[2]
+                             if uid in processed_units: continue
+                             processed_units.add(uid)
+                             title = request.POST.get(f'unit_title_{uid}')
+                             if title:
+                                 TheoryUnit.objects.create(
+                                     syllabus=syllabus, title=title,
+                                     description=request.POST.get(f'unit_desc_{uid}', request.POST.get(f'unit_description_{uid}', '')),
+                                     weightage=request.POST.get(f'unit_weight_{uid}', request.POST.get(f'unit_weightage_{uid}', 0)) or 0,
+                                     hours=request.POST.get(f'unit_hours_{uid}') or 0
+                                 )
+
+                         # RECREATE: Practicals
+                         prac_keys = sorted([k for k in request.POST.keys() if k.startswith('prac_desc_')])
+                         processed_pracs = set()
+                         for k in prac_keys:
+                             uid = k.split('_')[2]
+                             if uid in processed_pracs: continue
+                             processed_pracs.add(uid)
+                             desc = request.POST.get(f'prac_desc_{uid}')
+                             if desc:
+                                 Practical.objects.create(
+                                     syllabus=syllabus, description=desc,
+                                     weightage=request.POST.get(f'prac_weight_{uid}', request.POST.get(f'prac_weightage_{uid}', 0)) or 0,
+                                     hours=request.POST.get(f'prac_hours_{uid}') or 0
+                                 )
+
+                         # RECREATE: Course Outcomes + Mappings
+                         co_keys = sorted([k for k in request.POST.keys() if k.startswith('co_desc_')])
+                         processed_cos = set()
+                         co_idx = 1
+                         for k in co_keys:
+                             uid = k.split('_')[2]
+                             if uid in processed_cos: continue
+                             processed_cos.add(uid)
+                             desc = request.POST.get(f'co_desc_{uid}')
+                             if desc:
+                                 co = CourseOutcome.objects.create(
+                                     syllabus=syllabus, code=f'CO{co_idx}', description=desc)
+                                 map_defaults = {f'po{i}': request.POST.get(f'map_co{co_idx}_po{i}') or 0 for i in range(1, 13)}
+                                 OutcomeMapping.objects.create(course_outcome=co, **map_defaults)
+                                 co_idx += 1
+
+                         # RECREATE: Evaluation Scheme
+                         EvaluationScheme.objects.create(
+                             syllabus=syllabus,
+                             mid_sem=safe_int(request.POST.get('eval_mid')),
+                             end_sem=safe_int(request.POST.get('eval_end')),
+                             cec_attendance=safe_int(request.POST.get('eval_cec_att')),
+                             cec_mcq=safe_int(request.POST.get('eval_cec_mcq')),
+                             cec_assignment=safe_int(request.POST.get('eval_cec_assign')),
+                             prac_attendance=safe_int(request.POST.get('eval_prac_att')),
+                             prac_exam=safe_int(request.POST.get('eval_prac_exam')),
+                             prac_viva=safe_int(request.POST.get('eval_prac_viva')),
+                             prac_journal=safe_int(request.POST.get('eval_prac_journal')),
+                             prac_discipline=safe_int(request.POST.get('eval_prac_disc')),
+                         )
+
+                         # RECREATE: Learning Resources
+                         res_keys = sorted([k for k in request.POST.keys() if k.startswith('res_cat_')])
+                         processed_res = set()
+                         for k in res_keys:
+                             uid = k.split('_')[2]
+                             if uid in processed_res: continue
+                             processed_res.add(uid)
+                             cat     = request.POST.get(f'res_cat_{uid}')
+                             content = request.POST.get(f'res_content_{uid}')
+                             if cat and content:
+                                 LearningResource.objects.create(syllabus=syllabus, category=cat, content=content)
+
+                     # ── ONE consolidated diff log per changed section ─────
+                     new_objs  = list(syllabus.objectives.values('text', 'blooms_domain', 'blooms_subdomain'))
+                     new_units = list(syllabus.theory_units.values('title', 'description', 'weightage', 'hours'))
+                     new_pracs = list(syllabus.practicals.values('description', 'weightage', 'hours'))
+                     new_cos   = list(syllabus.course_outcomes.values('code', 'description'))
+                     new_res   = list(syllabus.learning_resources.values('category', 'content'))
+                     try:
+                         _es2 = syllabus.evaluation_scheme
+                         new_eval = {f: getattr(_es2, f) for f in (
+                             'mid_sem','end_sem','cec_attendance','cec_mcq','cec_assignment',
+                             'prac_attendance','prac_exam','prac_viva','prac_journal','prac_discipline')}
+                     except Exception:
+                         new_eval = {}
+
+                     for _model, _old, _new in [
+                         ('CourseObjective',  old_objs,  new_objs),
+                         ('TheoryUnit',       old_units, new_units),
+                         ('Practical',        old_pracs, new_pracs),
+                         ('CourseOutcome',    old_cos,   new_cos),
+                         ('EvaluationScheme', old_eval,  new_eval),
+                         ('LearningResource', old_res,   new_res),
+                     ]:
+                         if _old != _new:
+                             _AL.log_change(
+                                 syllabus=syllabus, user=request.user,
+                                 ip_address=_ip, model_name=_model,
+                                 record_id=syllabus.pk, field_name='',
+                                 old_value=_old, new_value=_new,
+                                 action_type='update',
+                             )
+
+                # --- Task 9.2 / 14.3: Post-save completeness status ---
+                try:
+                    is_done, missing = syllabus.is_complete()
+                    pct = syllabus.get_completion_percentage()
+                    if is_done:
+                        msg = f'Draft saved successfully. Syllabus is complete ({pct}%) and ready for PDF generation.'
+                    else:
+                        missing_str = ', '.join(missing[:3])
+                        more = f' (+{len(missing) - 3} more)' if len(missing) > 3 else ''
+                        msg = f'Draft saved ({pct}% complete). Still missing: {missing_str}{more}.'
+                except Exception:
+                    is_done, pct, missing, msg = False, 0, [], 'Draft saved successfully.'
+
+                # --- Task 14.2/14.4: AJAX save stays on slide; regular POST redirects ---
+                is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                if is_ajax:
+                    return JsonResponse({
+                        'ok': True,
+                        'message': msg,
+                        'is_complete': is_done,
+                        'pct': pct,
+                        'missing': missing,
+                        'syllabus_id': syllabus.pk,
+                        'updated_at': syllabus.updated_at.isoformat(),
+                    })
+                messages.success(request, msg)
+                return redirect('faculty_dashboard')
 
             except Exception as e:
                 import traceback
                 traceback.print_exc()
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                   return JsonResponse({'ok': False, 'error': str(e)}, status=400)
                 return render(request, 'accounts/syllabus_builder.html', {
-                    'faculty': faculty,
-                    'semesters': semesters,
-                    'selected_subject': selected_subject,
-                    'error': f"Error saving draft: {str(e)}",
-                    'saved_syllabus': None # Clean state on error to avoid confusion
+                   'faculty': faculty,
+                   'semesters': semesters,
+                   'selected_subject': selected_subject,
+                   'error': f"Error saving draft: {str(e)}",
+                   'saved_syllabus': None
                 })
-
     # Prepare Context & Hydration
     context = {
         'faculty': faculty, 
@@ -990,59 +1191,19 @@ def generate_pdf(request, syllabus_id):
     if not request.user.is_staff and syllabus.faculty.user != request.user:
          return HttpResponseForbidden("Not authorized")
 
-    # --- VALIDATION FOR PDF GENERATION ---
-    # We must enforce the same rules as Draft Save here.
-    # If invalid, redirect back to builder with error.
-    errors = []
-    first_invalid = None
-
-    def add_err(msg, field=None):
-        nonlocal first_invalid
-        errors.append(msg)
-        if field and not first_invalid: first_invalid = field
-
-    # 1. Static
-    if not syllabus.hours_lecture and not syllabus.hours_practical and not syllabus.hours_tutorial:
-         # Only if ALL zero? No, user said "Must not be blank". But DB stores 0.
-         # Actually checking if required fields are effectively 'missing' logic is harder on loaded object
-         # But we can check emptiness of text fields.
-         pass
-    
-    # Text Fields
-    if not syllabus.prerequisites or len(syllabus.prerequisites) < 3: add_err("Prerequisites missing or too short", "prerequisites")
-    if not syllabus.rationale: add_err("Rationale is required", "rationale")
-    # Date?
-    # if not syllabus.approval_date: add_err("Approval Date required", "approval_date")
-
-    # 2. Dynamic
-    if not syllabus.objectives.exists(): add_err("At least one Objective required")
-    
-    if not syllabus.theory_units.exists(): add_err("At least one Theory Unit required")
-    else:
-        # Check integrity
-        # We can't easily check individual unit fields without iterating
-        # But if they are in DB, they passed some check? 
-        # CAUTION: Older drafts might be invalid.
-        # Let's trust DB state for "filled" but check constraints
-        wt = sum(u.weightage for u in syllabus.theory_units.all())
-        if abs(wt - 100) > 0.1: add_err(f"Total Unit Weight must be 100% (Current: {wt}%)")
-    
-    if not syllabus.course_outcomes.exists(): add_err("At least one CO required")
-    if not syllabus.learning_resources.exists(): add_err("At least one Resource required")
-
-    # OUTCOME MAPPING CHECK
-    # "CO-PO mapping table: No blank cells allowed."
-    # In DB, they are stored as numbers 0-3. 
-    # If they are created, they are likely valid 0s. 
-    # But let's verify if any OutcomeMapping is missing? 
-    # Or if any OutcomeMapping has nulls? (Model usually defaults 0)
-
-    if errors:
-        from django.contrib import messages
-        messages.error(request, "Cannot generate PDF: " + "; ".join(errors))
-        return redirect(f"/accounts/syllabus-builder/?draft_id={syllabus.id}")
-
+    # --- Task 10.1: Completeness check before PDF generation ---
+    # Requirements: 6.1, 6.2, 6.5
+    is_done, missing_fields = syllabus.is_complete()
+    if not is_done:
+        return JsonResponse(
+            {
+                'error': 'Cannot generate PDF: syllabus is incomplete.',
+                'missing_fields': missing_fields,
+            },
+            status=400,
+        )
     # --- END VALIDATION ---
+
 
     # Context Prep
     total_hours = syllabus.hours_lecture + syllabus.hours_practical + syllabus.hours_tutorial
@@ -1081,35 +1242,21 @@ def generate_pdf(request, syllabus_id):
     }
     
     html_string = render_to_string('pdf/syllabus_canonical.html', context)
-    
     # Generate PDF
     from io import BytesIO
     result = BytesIO()
-    pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result)
-    
+    pdf = pisa.pisaDocument(BytesIO(html_string.encode('UTF-8')), result)
+
     if not pdf.err:
-        # Save to FileField
-        # Use clean variables to prevent "None" in filename
-        safe_sem = semester_name if semester_name else "General" 
-        filename = f"Syllabus_{syllabus.subject.course_code}_{safe_sem}_{academic_year}.pdf"
-        
-        from django.core.files.base import ContentFile
-        
-        # Save content
-        syllabus.pdf_file.save(filename, ContentFile(result.getvalue()))
-        syllabus.pdf_generated_at = timezone.now()
-        syllabus.save()
-        
-        # Set subject as active
-        syllabus.subject.is_active = True
-        syllabus.subject.save()
-        
-        # Return response as download
         response = HttpResponse(result.getvalue(), content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        course_code = syllabus.subject.course_code if syllabus.subject and syllabus.subject.course_code else str(syllabus_id)
+        safe_code = "".join(c if c.isalnum() or c in ('-', '_') else '_' for c in course_code)
+        response['Content-Disposition'] = (
+            f'attachment; filename="Syllabus_{safe_code}.pdf"'
+        )
         return response
-        
-    return HttpResponse(f"PDF Generation Error: {pdf.err}")
+
+    return HttpResponse(f'PDF Generation Error: {pdf.err}')
 
 
 @never_cache
@@ -1271,3 +1418,100 @@ def generate_semester_pdf(request, semester_id):
     return HttpResponse(f"PDF Generation Error: {pdf.err}")
 
 
+# -----------------------------------------------------------------------
+# Task 8.1 - audit_log_list
+# -----------------------------------------------------------------------
+
+@login_required
+def audit_log_list(request):
+    """
+    Paginated, filterable list of SyllabusEditLog entries.
+    Role-gated: admin sees all, faculty sees only their assigned subjects.
+    GET params: subject, date_from, date_to (YYYY-MM-DD), user, page.
+    Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.4
+    """
+    from django.core.paginator import Paginator
+    from django.utils.dateparse import parse_date
+    from django.utils.timezone import make_aware
+    from datetime import datetime, time as dt_time
+    from .access_controller import AuditLogAccessController
+
+    def _date_from(s):
+        d = parse_date(s) if s else None
+        return make_aware(datetime.combine(d, dt_time.min)) if d else None
+
+    def _date_to(s):
+        d = parse_date(s) if s else None
+        return make_aware(datetime.combine(d, dt_time.max)) if d else None
+
+    raw_filters = {
+        'subject_id': request.GET.get('subject'),
+        'date_from':  _date_from(request.GET.get('date_from')),
+        'date_to':    _date_to(request.GET.get('date_to')),
+        # Task 16.3: user filter only for staff or explicit view_all_logs perm (Req 2.1)
+        'user_id':    request.GET.get('user') if (
+            request.user.is_staff or
+            request.user.has_perm('accounts.view_all_logs')
+        ) else None,
+    }
+    filters = {k: v for k, v in raw_filters.items() if v}
+
+    logs = AuditLogAccessController.get_logs_for_user(request.user, filters)
+
+    paginator = Paginator(logs, 50)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    if request.user.is_staff:
+        available_subjects = Subject.objects.all().order_by('course_name')
+        all_faculty = Faculty.objects.select_related('user').order_by('full_name')
+    else:
+        try:
+            faculty = Faculty.objects.get(user=request.user)
+            available_subjects = faculty.subjects.all().order_by('course_name')
+        except Faculty.DoesNotExist:
+            available_subjects = Subject.objects.none()
+        all_faculty = []
+
+    return render(request, 'accounts/audit_log_list.html', {
+        'logs': page_obj,
+        'available_subjects': available_subjects,
+        'all_faculty': all_faculty if request.user.is_staff else [],
+        'filters': filters,
+    })
+
+
+
+# -----------------------------------------------------------------------
+# Task 8.2 - audit_log_detail
+# -----------------------------------------------------------------------
+
+@login_required
+def audit_log_detail(request, log_id):
+    """
+    Single SyllabusEditLog detail view.
+    Returns HTTP 403 if the user lacks permission.
+    Requirements: 2.5, 3.3, 16.1, 16.2
+    """
+    import logging as _logging
+    _audit_access_log = _logging.getLogger('accounts.audit_access')
+    from .access_controller import AuditLogAccessController
+    from .models import SyllabusEditLog
+
+    log_entry = get_object_or_404(
+        SyllabusEditLog.objects.select_related('syllabus__subject', 'user'),
+        pk=log_id,
+    )
+
+    if not AuditLogAccessController.can_view_log(request.user, log_entry):
+        # Task 16.2: Log unauthorized access attempts (Requirements: 3.3)
+        _audit_access_log.warning(
+            'Unauthorized audit log access: user=%s (id=%s) tried to view '
+            'log_entry=%s at %s',
+            request.user.username, request.user.pk, log_id,
+            __import__('django.utils.timezone', fromlist=['now']).now().isoformat(),
+        )
+        return HttpResponseForbidden(
+            'You do not have permission to view this audit log entry.'
+        )
+
+    return render(request, 'accounts/audit_log_detail.html', {'log': log_entry})

@@ -1,0 +1,68 @@
+<div class="sb-card">
+    <h2 class="sb-title">Course Overview &amp; Meta Info</h2>
+
+    <div class="sb-form-group">
+        <label class="sb-label">Course Pre-requisites</label>
+        <input type="text" class="sb-input" name="prerequisites" placeholder="e.g. Basic Mathematics"
+            value="{{ saved_syllabus.prerequisites|default:'' }}" minlength="3" required>
+    </div>
+
+    <div class="sb-row">
+        <div class="sb-form-group">
+            <label class="sb-label">Course Category</label>
+            <select class="sb-select" name="category">
+                <option value="HS"  {% if saved_syllabus.category == "HS" %}selected{% endif %}>HS</option>
+                <option value="BS"  {% if saved_syllabus.category == "BS" %}selected{% endif %}>BS</option>
+                <option value="ES"  {% if saved_syllabus.category == "ES" %}selected{% endif %}>ES</option>
+                <option value="PC"  {% if saved_syllabus.category == "PC" %}selected{% endif %}>PC</option>
+                <option value="PE"  {% if saved_syllabus.category == "PE" %}selected{% endif %}>PE</option>
+                <option value="OE"  {% if saved_syllabus.category == "OE" %}selected{% endif %}>OE</option>
+                <option value="IP"  {% if saved_syllabus.category == "IP" %}selected{% endif %}>IP</option>
+                <option value="NC"  {% if saved_syllabus.category == "NC" %}selected{% endif %}>NC</option>
+            </select>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Course Category Title</label>
+            <select class="sb-select" name="focus">
+                <option value="HS"  {% if saved_syllabus.focus == 'HS' %}selected{% endif %}>Humanities and Social Sciences (HS)</option>
+                <option value="BS"  {% if saved_syllabus.focus == 'BS' %}selected{% endif %}>Basic Sciences (BS)</option>
+                <option value="ES"  {% if saved_syllabus.focus == 'ES' %}selected{% endif %}>Engineering Sciences (ES)</option>
+                <option value="PC"  {% if saved_syllabus.focus == 'PC' %}selected{% endif %}>Professional Subjects – Core (PC)</option>
+                <option value="PE"  {% if saved_syllabus.focus == 'PE' %}selected{% endif %}>Professional Subjects – Electives (PE)</option>
+                <option value="OE"  {% if saved_syllabus.focus == 'OE' %}selected{% endif %}>Open Subjects – Electives (OE)</option>
+                <option value="IP"  {% if saved_syllabus.focus == 'IP' %}selected{% endif %}>Project Work / Seminar / Internship</option>
+                <option value="NC"  {% if saved_syllabus.focus == 'NC' %}selected{% endif %}>Mandatory Courses – Non Credit</option>
+                <option value="VAC" {% if saved_syllabus.focus == 'VAC' %}selected{% endif %}>Value Added Courses</option>
+            </select>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Course Focus</label>
+            <select class="sb-select" name="course_focus">
+                <option value="Employability"    {% if saved_syllabus.course_focus == 'Employability' %}selected{% endif %}>Employability</option>
+                <option value="Entrepreneurship" {% if saved_syllabus.course_focus == 'Entrepreneurship' %}selected{% endif %}>Entrepreneurship</option>
+                <option value="Skill Development"{% if saved_syllabus.course_focus == 'Skill Development' %}selected{% endif %}>Skill Development</option>
+            </select>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Revision / Approval Date</label>
+            <input type="date" class="sb-input" name="approval_date"
+                value="{{ saved_syllabus.approval_date|date:'Y-m-d'|default:'' }}">
+        </div>
+    </div>
+
+    <div class="sb-form-group">
+        <label class="sb-label">Rationale</label>
+        <textarea class="sb-textarea" rows="5" name="rationale"
+            placeholder="Why is this course important?">{{ saved_syllabus.rationale|default:'' }}</textarea>
+    </div>
+
+    <div class="sb-form-group">
+        <label class="sb-label">Course Objectives</label>
+        <div id="objectives_container"></div>
+        <button type="button" class="sb-btn sb-btn-add" data-action="add-objective">➕ Add Objective</button>
+    </div>
+</div>
+<div class="sb-actions">
+    <button type="button" class="sb-btn sb-btn-secondary" data-step-prev="1">⬅ Back</button>
+    <button type="button" class="sb-btn sb-btn-primary" data-step-next="3">Next: Course Content ➡</button>
+</div>

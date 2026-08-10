@@ -1,0 +1,91 @@
+<div class="sb-card">
+    <h2 class="sb-title">Course Basic Information</h2>
+    <div class="sb-row">
+        <div class="sb-form-group">
+            <label class="sb-label">Course Code</label>
+            {% if selected_subject %}
+            <input type="text" class="sb-input" name="course_code" value="{{ selected_subject.course_code }}" required readonly>
+            {% else %}
+            <input type="text" class="sb-input" name="course_code" required>
+            {% endif %}
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Course Name</label>
+            {% if selected_subject %}
+            <input type="text" class="sb-input" name="course_name" value="{{ selected_subject.course_name }}" required readonly>
+            <input type="hidden" name="course_name" value="{{ selected_subject.course_name }}">
+            {% else %}
+            <input type="text" class="sb-input" name="course_name" required>
+            {% endif %}
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Semester</label>
+            {% if selected_subject and selected_subject.semester %}
+            <select class="sb-select" name="semester" disabled>
+                <option value="{{ selected_subject.semester }}" selected>{{ selected_subject.semester }}</option>
+            </select>
+            <input type="hidden" name="semester" value="{{ selected_subject.semester }}">
+            {% elif faculty and faculty.semester %}
+            <select class="sb-select" name="semester" disabled>
+                <option value="{{ faculty.semester }}" selected>{{ faculty.semester }}</option>
+            </select>
+            <input type="hidden" name="semester" value="{{ faculty.semester }}">
+            {% else %}
+            <select class="sb-select" name="semester">
+                <option value="">Select</option>
+                {% for sem in semesters %}
+                <option value="{{ sem }}">{{ sem }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Academic Year</label>
+            <input type="text" class="sb-input" value="{{ selected_subject.academic_year|default:'Academic Year Not Defined' }}" readonly>
+        </div>
+    </div>
+
+    <h4 class="sb-section-head">Teaching Scheme (Hours/Week)</h4>
+    <div class="sb-row">
+        <div class="sb-form-group">
+            <label class="sb-label">Lecture</label>
+            <input type="number" class="sb-input calc-hours" name="hours_lecture" value="{{ saved_syllabus.hours_lecture|default:0 }}" min="0" required>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Practical</label>
+            <input type="number" class="sb-input calc-hours" name="hours_practical" value="{{ saved_syllabus.hours_practical|default:0 }}" min="0" required>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Tutorial</label>
+            <input type="number" class="sb-input calc-hours" name="hours_tutorial" value="{{ saved_syllabus.hours_tutorial|default:0 }}" min="0" required>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Total Hours</label>
+            <input type="number" class="sb-input" id="total_hours" readonly>
+        </div>
+    </div>
+
+    <h4 class="sb-section-head">Teaching Credit</h4>
+    <div class="sb-row">
+        <div class="sb-form-group">
+            <label class="sb-label">Lecture Credit</label>
+            <input type="number" class="sb-input calc-credits" name="credit_lecture" value="{{ saved_syllabus.credit_lecture|default:0 }}" min="0" required>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Practical Credit</label>
+            <input type="number" class="sb-input calc-credits" name="credit_practical" value="{{ saved_syllabus.credit_practical|default:0 }}" min="0" required>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Tutorial Credit</label>
+            <input type="number" class="sb-input calc-credits" name="credit_tutorial" value="{{ saved_syllabus.credit_tutorial|default:0 }}" min="0" required>
+        </div>
+        <div class="sb-form-group">
+            <label class="sb-label">Total Credit</label>
+            <input type="number" class="sb-input" id="total_credits" readonly>
+        </div>
+    </div>
+</div>
+<div class="sb-actions">
+    <div></div>
+    <button type="button" class="sb-btn sb-btn-primary" data-step-next="2">Next: Course Overview ➡</button>
+</div>

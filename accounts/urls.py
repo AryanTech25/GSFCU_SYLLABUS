@@ -15,4 +15,8 @@ urlpatterns = [
     path('semester/preview/<int:semester_id>/', views.preview_semester_merge, name='preview_semester_merge'),
     path('semester/generate/<int:semester_id>/', views.generate_semester_pdf, name='generate_semester_pdf'),
 
+    # Task 8.3 – Audit Log views (Requirements: 2.1, 3.1)
+    path('audit-logs/', views.audit_log_list, name='audit_log_list'),
+    path('audit-logs/<int:log_id>/', views.audit_log_detail, name='audit_log_detail'),
+
 ]

@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Logs | GSFC Curriculum Builder{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Audit Log List page styles ── */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .filter-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .filter-group label {
+    display: block;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: .3rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .filter-group input,
+  .filter-group select {
+    width: 100%;
+    padding: .45rem .65rem;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    font-size: .9rem;
+    background: #fafafa;
+    transition: border-color .15s;
+  }
+  .filter-group input:focus,
+  .filter-group select:focus {
+    outline: none;
+    border-color: var(--gsfc-blue);
+    background: white;
+  }
+  .filter-actions {
+    display: flex;
+    gap: .75rem;
+    align-items: flex-end;
+    padding-top: 1.2rem; /* align with inputs */
+  }
+  .btn-filter {
+    background: var(--gsfc-blue);
+    color: white;
+    border: none;
+    padding: .45rem 1.1rem;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: .9rem;
+    transition: opacity .15s;
+  }
+  .btn-filter:hover { opacity: .85; }
+  .btn-clear {
+    background: white;
+    color: #555;
+    border: 1px solid #d1d5db;
+    padding: .45rem 1rem;
+    border-radius: 5px;
+    font-size: .9rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background .15s;
+  }
+  .btn-clear:hover { background: #f3f4f6; }
+
+  /* table */
+  .log-table-wrap {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    overflow: hidden;
+  }
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+  }
+  .log-table thead tr {
+    background: var(--gsfc-blue);
+    color: white;
+  }
+  .log-table thead th {
+    padding: .85rem 1rem;
+    text-align: left;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .log-table tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    transition: background .12s;
+  }
+  .log-table tbody tr:hover { background: #f8fafc; }
+  .log-table tbody td {
+    padding: .75rem 1rem;
+    vertical-align: middle;
+  }
+  .log-table tbody td:last-child { white-space: nowrap; }
+
+  /* action badge */
+  .action-badge {
+    display: inline-block;
+    padding: .2rem .6rem;
+    border-radius: 9999px;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .action-create { background: #dcfce7; color: #166534; }
+  .action-update { background: #dbeafe; color: #1e40af; }
+  .action-delete { background: #fee2e2; color: #991b1b; }
+  .action-submit { background: #fef9c3; color: #854d0e; }
+  .action-view   { background: #f3e8ff; color: #6b21a8; }
+
+  /* value cells */
+  .val-cell {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #555;
+    font-family: monospace;
+    font-size: .82rem;
+  }
+  .val-empty { color: #bbb; font-style: italic; }
+
+  /* detail link */
+  .btn-detail {
+    color: var(--gsfc-blue);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: .85rem;
+  }
+  .btn-detail:hover { text-decoration: underline; }
+
+  /* pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: .4rem;
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+  .pagination a,
+  .pagination span {
+    padding: .35rem .7rem;
+    border-radius: 4px;
+    font-size: .9rem;
+    text-decoration: none;
+  }
+  .pagination a { color: var(--gsfc-blue); border: 1px solid #d1d5db; transition: background .12s; }
+  .pagination a:hover { background: #f0f4ff; }
+  .pagination .current-page {
+    background: var(--gsfc-blue);
+    color: white;
+    font-weight: 700;
+    border: none;
+  }
+  .pagination .disabled { color: #bbb; border: 1px solid #e5e7eb; cursor: default; }
+
+  /* empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #9ca3af;
+  }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+
+  /* result count */
+  .result-meta {
+    font-size: .85rem;
+    color: #6b7280;
+    padding: .6rem 1rem;
+    border-top: 1px solid #f0f0f0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ── Page header ── -->
+<div class="page-header">
+  <h1 class="section-title">Audit Logs</h1>
+  <a href="{% url 'faculty_dashboard' %}" class="btn-clear">← Back to Dashboard</a>
+</div>
+
+<!-- ── Filter form ── -->
+<div class="filter-card">
+  <form method="get" id="filter-form">
+    <div class="filter-grid">
+
+      {% if request.user.is_staff %}
+      <div class="filter-group">
+        <label for="id_user">Faculty</label>
+        <select name="user" id="id_user">
+          <option value="">All faculty</option>
+          {% for f in all_faculty %}
+          <option value="{{ f.pk }}" {% if request.GET.user == f.pk|stringformat:"s" %}selected{% endif %}>
+            {{ f.full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="filter-group">
+        <label for="id_subject">Subject</label>
+        <select name="subject" id="id_subject">
+          <option value="">All subjects</option>
+          {% for subj in available_subjects %}
+          <option value="{{ subj.pk }}" {% if request.GET.subject == subj.pk|stringformat:"s" %}selected{% endif %}>
+            {{ subj.course_code }} – {{ subj.course_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="id_date_from">From date</label>
+        <input type="date" name="date_from" id="id_date_from"
+               value="{{ request.GET.date_from }}">
+      </div>
+
+      <div class="filter-group">
+        <label for="id_date_to">To date</label>
+        <input type="date" name="date_to" id="id_date_to"
+               value="{{ request.GET.date_to }}">
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn-filter">Filter</button>
+        <a href="{% url 'audit_log_list' %}" class="btn-clear">Clear</a>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- ── Results table ── -->
+<div class="log-table-wrap">
+  {% if logs %}
+  <table class="log-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Timestamp</th>
+        <th>Faculty</th>
+        <th>Subject</th>
+        <th>Action</th>
+        <th>Field</th>
+        <th>Old value</th>
+        <th>New value</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td style="color:#9ca3af;font-size:.8rem;">{{ log.pk }}</td>
+        <td>{{ log.timestamp|date:"d M Y H:i" }}</td>
+        <td>
+          {% if log.user %}{{ log.user.get_full_name|default:log.user.username }}
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if log.syllabus and log.syllabus.subject %}
+          <span title="{{ log.syllabus.subject.course_name }}">{{ log.syllabus.subject.course_code }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% with a=log.action_type|lower %}
+          <span class="action-badge action-{{ a }}">{{ log.action_type }}</span>
+          {% endwith %}
+        </td>
+        <td style="font-family:monospace;font-size:.85rem;">{{ log.field_name|default:"—" }}</td>
+        <td>
+          {% if log.old_value %}
+          <div class="val-cell" title="{{ log.old_value }}">{{ log.old_value }}</div>
+          {% else %}<span class="val-empty">—</span>{% endif %}
+        </td>
+        <td>
+          {% if log.new_value %}
+          <div class="val-cell" title="{{ log.new_value }}">{{ log.new_value }}</div>
+          {% else %}<span class="val-empty">—</span>{% endif %}
+        </td>
+        <td>
+          <a href="{% url 'audit_log_detail' log.pk %}" class="btn-detail">View →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- result count -->
+  <div class="result-meta">
+    Showing {{ logs.start_index }}–{{ logs.end_index }} of {{ logs.paginator.count }} entries
+  </div>
+
+  <!-- pagination -->
+  {% if logs.has_other_pages %}
+  <div class="pagination">
+    {% if logs.has_previous %}
+    <a href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ logs.previous_page_number }}">‹ Prev</a>
+    {% else %}
+    <span class="disabled">‹ Prev</span>
+    {% endif %}
+
+    {% for p in logs.paginator.page_range %}
+      {% if p == logs.number %}
+      <span class="current-page">{{ p }}</span>
+      {% elif p >= logs.number|add:"-3" and p <= logs.number|add:"3" %}
+      <a href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ p }}">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if logs.has_next %}
+    <a href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ logs.next_page_number }}">Next ›</a>
+    {% else %}
+    <span class="disabled">Next ›</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <p>No audit log entries found.</p>
+    {% if request.GET %}
+    <a href="{% url 'audit_log_list' %}" class="btn-clear" style="margin-top:.5rem;display:inline-block;">Clear filters</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
