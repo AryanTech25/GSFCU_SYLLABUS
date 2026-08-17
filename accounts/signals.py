@@ -32,11 +32,26 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _suppress = threading.local()
+_tl_user = threading.local()
 
 
 def is_suppressed():
     """Return True when child-model signals should be silenced."""
     return getattr(_suppress, 'active', False)
+
+
+def set_current_user(user):
+    """
+    Store the Django User making the current request in thread-local storage
+    so signal handlers can record the correct faculty without a request object.
+    Call this in the view immediately before syllabus.save().
+    """
+    _tl_user.value = user
+
+
+def get_current_user():
+    """Return the thread-local user, or None if not set."""
+    return getattr(_tl_user, 'value', None)
 
 
 class suppress_child_signals:
@@ -106,10 +121,12 @@ def log_syllabus_change(sender, instance, created, **kwargs):
     try:
         snapshot = getattr(instance, '_pre_save_snapshot', {})
 
+        _user = get_current_user()
+
         if created:
             AuditLogger.log_change(
                 syllabus=instance,
-                user=None,
+                user=_user,
                 ip_address=None,
                 model_name='Syllabus',
                 record_id=instance.pk,
@@ -133,7 +150,7 @@ def log_syllabus_change(sender, instance, created, **kwargs):
             action = 'status_change' if field == 'status' else 'update'
             AuditLogger.log_change(
                 syllabus=instance,
-                user=None,
+                user=_user,
                 ip_address=None,
                 model_name='Syllabus',
                 record_id=instance.pk,
@@ -161,7 +178,7 @@ def _log_related_save(instance, model_name, created):
         syllabus = _get_syllabus_from_instance(instance)
         AuditLogger.log_change(
             syllabus=syllabus,
-            user=None,
+            user=get_current_user(),
             ip_address=None,
             model_name=model_name,
             record_id=instance.pk,
@@ -184,7 +201,7 @@ def _log_related_delete(instance, model_name):
         syllabus = _get_syllabus_from_instance(instance)
         AuditLogger.log_bulk_change(
             syllabus=syllabus,
-            user=None,
+            user=get_current_user(),
             ip_address=None,
             model_name=model_name,
             changes=[{'action': 'delete', 'record_id': instance.pk, 'data': {'pk': instance.pk}}],

@@ -583,6 +583,8 @@ def syllabus_builder(request):
                          if parsed:
                              syllabus.approval_date = parsed
                      syllabus.rationale = request.POST.get("rationale", "")
+                     from accounts.signals import set_current_user
+                     set_current_user(request.user)
                      syllabus.save()
 
                      # --- Task 9.1: Update last_completed_slide ---
