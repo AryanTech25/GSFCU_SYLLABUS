@@ -73,16 +73,25 @@ def faculty_dashboard(request):
     if faculty:
         from adminpanel.models import Syllabus
         for sub in subjects:
-            # Check draft specifically for this faculty and subject
-            draft = Syllabus.objects.filter(faculty=faculty, subject=sub, status='draft').first()
+            # 1. Prefer a syllabus owned by THIS faculty
+            draft = Syllabus.objects.filter(faculty=faculty, subject=sub).first()
+
+            # 2. Fallback: any existing syllabus on the subject (created by another faculty)
+            #    so we never show "Create New Syllabus" when one already exists.
+            other_syllabus = None
+            if draft is None:
+                other_syllabus = Syllabus.objects.filter(subject=sub).first()
+
+            effective = draft or other_syllabus
             subjects_data.append({
                 'subject': sub,
-                'has_draft': draft is not None,
-                'draft_id': draft.id if draft else None,
-                'has_pdf': bool(draft and draft.pdf_file),
-                'pdf_url': draft.pdf_file.url if (draft and draft.pdf_file) else None
+                'has_draft': effective is not None,
+                'draft_id': effective.id if effective else None,
+                'has_pdf': bool(effective and effective.pdf_file),
+                'pdf_url': effective.pdf_file.url if (effective and effective.pdf_file) else None,
+                'is_own': draft is not None,       # True = this faculty owns it (can edit)
             })
-        
+
         # Check if any drafts exist
         has_drafts = any(item['has_draft'] for item in subjects_data)
 

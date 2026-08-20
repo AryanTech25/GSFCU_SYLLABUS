@@ -65,10 +65,16 @@
                     <div style="display: flex; gap: 0.5rem; flex-direction: column;">
                         {% if item.has_draft %}
                         <div style="display:flex; gap:4px; flex-direction: column;">
+                            {% if item.is_own %}
                             <a href="{% url 'syllabus_builder' %}?draft_id={{ item.draft_id }}" class="btn"
                                 style="background-color: white; color: var(--gsfc-yellow); border: 1px solid var(--gsfc-yellow); padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; font-weight: bold; text-align: center;">
                                 ✏ Edit Syllabus
                             </a>
+                            {% else %}
+                            <span style="background-color: #f1f5f9; color: #64748b; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-align: center;">
+                                📄 Syllabus exists
+                            </span>
+                            {% endif %}
                             {% if item.has_pdf %}
                             <a href="{{ item.pdf_url }}" class="btn" target="_blank"
                                 style="background-color: var(--gsfc-success); color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; text-align: center;">
