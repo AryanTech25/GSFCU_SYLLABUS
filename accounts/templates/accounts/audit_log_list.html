@@ -275,7 +275,10 @@
         <td style="color:#9ca3af;font-size:.8rem;">{{ log.pk }}</td>
         <td>{{ log.timestamp|date:"d M Y H:i" }}</td>
         <td>
-          {% if log.user %}{{ log.user.get_full_name|default:log.user.username }}
+          {% if log.user %}
+            {% with fac=log.user.faculty %}
+              {% if fac %}{{ fac.full_name }}{% else %}{{ log.user.username }}{% endif %}
+            {% endwith %}
           {% else %}—{% endif %}
         </td>
         <td>

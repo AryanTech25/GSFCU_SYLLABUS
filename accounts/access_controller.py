@@ -111,7 +111,10 @@ class AuditLogAccessController:
             if user_id:
                 logs = logs.filter(user_id=user_id)
 
-        return logs.select_related('syllabus__subject', 'user').order_by('-timestamp')
+        return logs.select_related(
+            'syllabus__subject', 'user', 'user__faculty'
+        ).order_by('-timestamp')
+
 
     # ------------------------------------------------------------------
     # Task 7.2 – can_view_log()
