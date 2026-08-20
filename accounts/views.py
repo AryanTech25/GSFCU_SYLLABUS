@@ -76,20 +76,15 @@ def faculty_dashboard(request):
             # 1. Prefer a syllabus owned by THIS faculty
             draft = Syllabus.objects.filter(faculty=faculty, subject=sub).first()
 
-            # 2. Fallback: any existing syllabus on the subject (created by another faculty)
-            #    so we never show "Create New Syllabus" when one already exists.
-            other_syllabus = None
-            if draft is None:
-                other_syllabus = Syllabus.objects.filter(subject=sub).first()
-
-            effective = draft or other_syllabus
+            # Shared syllabus: any faculty assigned to the subject shares the same record.
+            # Look up the syllabus by subject only — faculty ownership is irrelevant here.
+            shared = Syllabus.objects.filter(subject=sub).first()
             subjects_data.append({
                 'subject': sub,
-                'has_draft': effective is not None,
-                'draft_id': effective.id if effective else None,
-                'has_pdf': bool(effective and effective.pdf_file),
-                'pdf_url': effective.pdf_file.url if (effective and effective.pdf_file) else None,
-                'is_own': draft is not None,       # True = this faculty owns it (can edit)
+                'has_draft': shared is not None,
+                'draft_id': shared.id if shared else None,
+                'has_pdf': bool(shared and shared.pdf_file),
+                'pdf_url': shared.pdf_file.url if (shared and shared.pdf_file) else None,
             })
 
         # Check if any drafts exist
@@ -187,32 +182,26 @@ def syllabus_builder(request):
         
         # 1. Try to find explicit draft
         if draft_id:
-             # Verify ownership and existence
-             check = Syllabus.objects.filter(id=draft_id, faculty=faculty).first()
-             if check:
+             # Shared model: verify faculty is assigned to the subject, not that they own the syllabus.
+             check = Syllabus.objects.filter(id=draft_id).first()
+             if check and check.subject in subjects:
                  target_syllabus_id = check.id
-        
-        # 2. Try implicit draft via subject
+
+        # 2. Try implicit lookup via subject — find any existing syllabus for the subject.
         if not target_syllabus_id and subject_id:
-             check = Syllabus.objects.filter(subject_id=subject_id, faculty=faculty, status='draft').first()
-             if check:
+             check = Syllabus.objects.filter(subject_id=subject_id).first()
+             if check and check.subject in subjects:
                  target_syllabus_id = check.id
-        
+
         # 3. Load full data if we have an ID
         if target_syllabus_id:
             saved_syllabus = load_full_syllabus(target_syllabus_id)
-            
-        # 4. If no draft, maybe auto-fill from a Final version?
-        # Only do this if we don't have a current draft we are working on
+
+        # 4. Auto-fill from any existing final version if still no data
         if not saved_syllabus and subject_id:
-             # Check for final to clone as template
-             final = Syllabus.objects.filter(subject_id=subject_id, faculty=faculty, status='final').order_by('-updated_at').first()
-             if final:
+             final = Syllabus.objects.filter(subject_id=subject_id, status='final').order_by('-updated_at').first()
+             if final and final.subject in subjects:
                  saved_syllabus = load_full_syllabus(final.id)
-                 # NOTE: We loaded a FINAL syllabus. 
-                 # We will display its data, but we must NOT act as if we are editing it directly in 'draft' mode.
-                 # The 'saved_syllabus' object here is just for pre-filling the context/hydration.
-                 # The form submission handles creating the new draft correctly.
 
         # Bind Data
         if saved_syllabus:
@@ -571,7 +560,8 @@ def syllabus_builder(request):
                          syllabus.status = 'draft' # Revert to draft on edit? Or user intends to edit final.
                          # For now, update timestamp and status.
                      
-                     syllabus.faculty = faculty # Ensure ownership
+                     # Shared syllabus: keep the original creator as faculty.
+                     # Any faculty assigned to the subject can save edits — do NOT overwrite faculty.
                      # 3. Update Fields — cast to proper Python types so the
                      # pre_save snapshot comparison never produces false positives.
                      syllabus.hours_lecture    = int(request.POST.get("hours_lecture") or 0)
@@ -1196,11 +1186,14 @@ def generate_pdf(request, syllabus_id):
     if not syllabus:
          return HttpResponse("Syllabus not found", status=404)
     
-    # Security check
-    
-    # Security check
-    if not request.user.is_staff and syllabus.faculty.user != request.user:
-         return HttpResponseForbidden("Not authorized")
+    # Security check: allow admin or any faculty assigned to the subject.
+    if not request.user.is_staff:
+        try:
+            requesting_faculty = Faculty.objects.get(user=request.user)
+            if not syllabus.subject.faculties.filter(id=requesting_faculty.id).exists():
+                return HttpResponseForbidden("Not authorized")
+        except Faculty.DoesNotExist:
+            return HttpResponseForbidden("Not authorized")
 
     # --- Task 10.1: Completeness check before PDF generation ---
     # Requirements: 6.1, 6.2, 6.5
