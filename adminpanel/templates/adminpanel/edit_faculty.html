@@ -7,15 +7,103 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const programSelect = document.getElementById('id_program');
-        const branchSelect = document.getElementById('id_branch');
+        const branchSelect  = document.getElementById('id_branch');
+        if (programSelect && programSelect.value) programSelect.disabled = false;
+        if (branchSelect  && branchSelect.value)  branchSelect.disabled  = false;
 
-        // Re-enable if they have values (for edit mode)
-        if (programSelect && programSelect.value) {
-            programSelect.disabled = false;
+        const ASSIGN_URL   = "{% url 'assign_subject_to_faculty'   faculty.id %}";
+        const UNASSIGN_URL = "{% url 'unassign_subject_from_faculty' faculty.id %}";
+        const CSRF_TOKEN   = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        const dropdown  = document.getElementById('subject-dropdown');
+        const assignBtn = document.getElementById('assign-btn');
+        const tbody     = document.getElementById('assigned-tbody');
+        const emptyRow  = document.getElementById('empty-row');
+        const toast     = document.getElementById('assign-toast');
+
+        function showToast(msg, isError) {
+            toast.textContent = msg;
+            toast.style.background = isError ? '#dc2626' : '#16a34a';
+            toast.style.display = 'block';
+            setTimeout(function() { toast.style.display = 'none'; }, 3500);
         }
-        if (branchSelect && branchSelect.value) {
-            branchSelect.disabled = false;
+
+        function updateEmptyRow() {
+            emptyRow.style.display = tbody.querySelectorAll('tr.subject-row').length === 0 ? '' : 'none';
         }
+
+        assignBtn.addEventListener('click', function () {
+            const subjectId = dropdown.value;
+            if (!subjectId) { showToast('Please select a subject first.', true); return; }
+
+            fetch(ASSIGN_URL, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'subject_id=' + encodeURIComponent(subjectId),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) { showToast(data.error || 'Error assigning subject.', true); return; }
+                var s = data.subject;
+                var tr = document.createElement('tr');
+                tr.className = 'subject-row';
+                tr.dataset.subjectId = s.id;
+                tr.style.borderBottom = '1px solid #f1f5f9';
+                tr.innerHTML =
+                    '<td style="padding:.6rem 1rem;">' + s.course_name + '</td>' +
+                    '<td style="padding:.6rem 1rem;">' + s.course_code + '</td>' +
+                    '<td style="padding:.6rem 1rem;">' + (s.semester || '\u2014') + '</td>' +
+                    '<td style="padding:.6rem 1rem;">' +
+                    '<button type="button" class="btn btn-outline remove-btn" ' +
+                    'style="padding:.25rem .75rem;font-size:.8rem;color:#dc2626;border-color:#dc2626;" ' +
+                    'data-id="' + s.id + '">Remove</button></td>';
+                tbody.insertBefore(tr, emptyRow);
+                dropdown.remove(dropdown.selectedIndex);
+                dropdown.value = '';
+                updateEmptyRow();
+                showToast(s.course_name + ' assigned successfully.', false);
+            })
+            .catch(function() { showToast('Network error. Please try again.', true); });
+        });
+
+        tbody.addEventListener('click', function (e) {
+            var btn = e.target.closest('.remove-btn');
+            if (!btn) return;
+            var subjectId = btn.dataset.id;
+            var row  = btn.closest('tr');
+            var cells = row.querySelectorAll('td');
+            var name = cells[0].textContent.trim();
+            var code = cells[1].textContent.trim();
+            var sem  = cells[2].textContent.trim();
+
+            fetch(UNASSIGN_URL, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'subject_id=' + encodeURIComponent(subjectId),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) { showToast(data.error || 'Error removing subject.', true); return; }
+                row.remove();
+                var opt = document.createElement('option');
+                opt.value = subjectId;
+                opt.textContent = name + ' (' + code + ')' + (sem && sem !== '\u2014' ? ' \u2014 ' + sem : '');
+                var opts = Array.from(dropdown.options).slice(1);
+                var inserted = false;
+                for (var i = 0; i < opts.length; i++) {
+                    if (opts[i].textContent > opt.textContent) {
+                        dropdown.insertBefore(opt, opts[i]);
+                        inserted = true; break;
+                    }
+                }
+                if (!inserted) dropdown.appendChild(opt);
+                updateEmptyRow();
+                showToast(name + ' removed.', false);
+            })
+            .catch(function() { showToast('Network error. Please try again.', true); });
+        });
+
+        updateEmptyRow();
     });
 </script>
 {% endblock %}
@@ -24,18 +112,30 @@
 <div class="container" style="max-width: 800px; margin-top: 2rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h1 class="section-title">Edit Faculty</h1>
-        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline" onclick="event.preventDefault(); window.location.replace(this.href);">Back to Dashboard</a>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline"
+           onclick="event.preventDefault(); window.location.replace(this.href);">Back to Dashboard</a>
     </div>
 
-    <div class="card"
-        style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+    {% if messages %}
+    {% for message in messages %}
+    <div style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:6px;
+         background:{% if message.tags == 'error' %}#fee2e2{% else %}#dcfce7{% endif %};
+         color:{% if message.tags == 'error' %}#991b1b{% else %}#166534{% endif %};">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Profile Form -->
+    <div class="card" style="background:white;padding:2rem;border-radius:8px;
+         box-shadow:0 4px 6px -1px rgba(0,0,0,.1);margin-bottom:2rem;">
         <form method="POST" action="">
             {% csrf_token %}
             <div class="form-group">
                 <label class="form-label">Full Name</label>
                 <input type="text" name="full_name" class="form-control" value="{{ faculty.full_name }}" required>
             </div>
-            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div>
                     <label class="form-label">Faculty ID (Username)</label>
                     <input type="text" name="faculty_id" class="form-control" value="{{ faculty.faculty_id }}" required>
@@ -45,7 +145,7 @@
                     <input type="password" name="password" class="form-control" placeholder="New Password">
                 </div>
             </div>
-            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div>
                     <label class="form-label">Email</label>
                     <input type="email" name="email" class="form-control" value="{{ faculty.email }}" required>
@@ -60,17 +160,15 @@
                 <select name="semester" class="form-control" required>
                     <option value="">Select Semester</option>
                     {% for sem in semesters %}
-                    <option value="{{ sem }}" {% if sem == selected_semester %}selected{% endif %}>
-                        {{ sem }}
-                    </option>
+                    <option value="{{ sem }}" {% if sem == selected_semester %}selected{% endif %}>{{ sem }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
                 <label class="form-label">Academic Year (e.g., 2025-26)</label>
-                <input type="text" name="academic_year" class="form-control" value="{{ faculty.academic_year|default:'' }}" placeholder="YYYY-YY" required>
+                <input type="text" name="academic_year" class="form-control"
+                       value="{{ faculty.academic_year|default:'' }}" placeholder="YYYY-YY" required>
             </div>
-
             <div class="form-group">
                 <label class="form-label">School</label>
                 <select name="school" id="id_school" class="form-control" required>
@@ -104,13 +202,75 @@
                     {% endfor %}
                 </select>
             </div>
-
-            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                <button type="submit" class="btn btn-secondary" style="flex: 1;">Update Faculty</button>
+            <div style="display:flex;gap:1rem;margin-top:2rem;">
+                <button type="submit" class="btn btn-secondary" style="flex:1;">Update Faculty</button>
                 <a href="{% url 'admin_dashboard' %}" class="btn btn-outline"
-                    style="flex: 1; text-align: center;" onclick="event.preventDefault(); window.location.replace(this.href);">Cancel</a>
+                   style="flex:1;text-align:center;"
+                   onclick="event.preventDefault(); window.location.replace(this.href);">Cancel</a>
             </div>
         </form>
     </div>
+
+    <!-- Assigned Subjects Card -->
+    <div class="card" style="background:white;padding:2rem;border-radius:8px;
+         box-shadow:0 4px 6px -1px rgba(0,0,0,.1);">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:1.25rem;color:#1e293b;">
+            Assigned Subjects
+        </h2>
+
+        <!-- Toast notification -->
+        <div id="assign-toast" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;
+             padding:.75rem 1.25rem;border-radius:8px;color:white;font-weight:500;
+             z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .3s;"></div>
+
+        <!-- Assign row -->
+        <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;align-items:center;">
+            <select id="subject-dropdown" class="form-control" style="flex:1;">
+                <option value="">— Select a subject to assign —</option>
+                {% for subject in available_subjects %}
+                <option value="{{ subject.id }}">
+                    {{ subject.course_name }} ({{ subject.course_code }}){% if subject.semester %} — {{ subject.semester }}{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            <button id="assign-btn" type="button" class="btn btn-secondary" style="white-space:nowrap;">
+                + Assign
+            </button>
+        </div>
+
+        <!-- Assignments table -->
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+                <thead>
+                    <tr style="background:#f1f5f9;text-align:left;">
+                        <th style="padding:.6rem 1rem;color:#475569;font-weight:600;">Course Name</th>
+                        <th style="padding:.6rem 1rem;color:#475569;font-weight:600;">Course Code</th>
+                        <th style="padding:.6rem 1rem;color:#475569;font-weight:600;">Semester</th>
+                        <th style="padding:.6rem 1rem;color:#475569;font-weight:600;width:90px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="assigned-tbody">
+                    {% for subject in assigned_subjects %}
+                    <tr class="subject-row" data-subject-id="{{ subject.id }}"
+                        style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:.6rem 1rem;">{{ subject.course_name }}</td>
+                        <td style="padding:.6rem 1rem;">{{ subject.course_code }}</td>
+                        <td style="padding:.6rem 1rem;">{{ subject.semester|default:"—" }}</td>
+                        <td style="padding:.6rem 1rem;">
+                            <button type="button" class="btn btn-outline remove-btn"
+                                    style="padding:.25rem .75rem;font-size:.8rem;color:#dc2626;border-color:#dc2626;"
+                                    data-id="{{ subject.id }}">Remove</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="empty-row">
+                        <td colspan="4" style="padding:1.5rem;text-align:center;color:#94a3b8;">
+                            No subjects assigned yet.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
-{% endblock %}
+{% endblock %}

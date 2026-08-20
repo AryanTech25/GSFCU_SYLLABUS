@@ -7,7 +7,7 @@ from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.cache import never_cache
 from django.contrib import messages
-from .models import School, Program, Branch, Faculty, Subject, Syllabus, Semester, SemesterSubject, ProgramOutcome, ProgramSpecificOutcome, ProgramEducationalObjective
+from .models import School, Program, Branch, Faculty, Subject, SubjectFaculty, Syllabus, Semester, SemesterSubject, ProgramOutcome, ProgramSpecificOutcome, ProgramEducationalObjective
 from django.db.models import Q
 from django.db import transaction
 from django.utils import timezone
@@ -263,14 +263,62 @@ def edit_faculty(request, faculty_id):
     
 
 
+    assigned_subject_ids = list(
+        SubjectFaculty.objects.filter(faculty=faculty).values_list('subject_id', flat=True)
+    )
+    assigned_subjects = Subject.objects.filter(id__in=assigned_subject_ids).order_by('course_name')
+    available_subjects = Subject.objects.exclude(id__in=assigned_subject_ids).order_by('course_name')
+
     return render(request, 'adminpanel/edit_faculty.html', {
         'faculty': faculty,
         'schools': schools,
         'programs': programs,
         'branches': branches,
         'semesters': semesters,
-        'selected_semester': faculty.semester
+        'selected_semester': faculty.semester,
+        'assigned_subjects': assigned_subjects,
+        'available_subjects': available_subjects,
     })
+
+
+@never_cache
+@login_required
+@user_passes_test(is_admin, login_url='/login/')
+@require_POST
+def assign_subject_to_faculty(request, faculty_id):
+    faculty = get_object_or_404(Faculty, id=faculty_id)
+    subject_id = request.POST.get('subject_id')
+    if not subject_id:
+        return JsonResponse({'ok': False, 'error': 'subject_id is required.'}, status=400)
+    subject = get_object_or_404(Subject, id=subject_id)
+    try:
+        SubjectFaculty.objects.create(faculty=faculty, subject=subject)
+        return JsonResponse({
+            'ok': True,
+            'subject': {
+                'id': subject.id,
+                'course_name': subject.course_name,
+                'course_code': subject.course_code,
+                'semester': subject.semester or '',
+            },
+        })
+    except Exception:
+        return JsonResponse({'ok': False, 'error': 'Subject already assigned to this faculty.'}, status=409)
+
+
+@never_cache
+@login_required
+@user_passes_test(is_admin, login_url='/login/')
+@require_POST
+def unassign_subject_from_faculty(request, faculty_id):
+    faculty = get_object_or_404(Faculty, id=faculty_id)
+    subject_id = request.POST.get('subject_id')
+    if not subject_id:
+        return JsonResponse({'ok': False, 'error': 'subject_id is required.'}, status=400)
+    deleted, _ = SubjectFaculty.objects.filter(faculty=faculty, subject_id=subject_id).delete()
+    if deleted:
+        return JsonResponse({'ok': True})
+    return JsonResponse({'ok': False, 'error': 'Assignment not found.'}, status=404)
 
 
 @never_cache
