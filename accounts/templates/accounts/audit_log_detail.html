@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Audit Log #{{ log.pk }} | GSFC Curriculum Builder{% endblock %}
 
@@ -154,7 +155,9 @@
       <div class="field-label">User</div>
       <div class="field-value">
         {% if log.user %}
-          {{ log.user.get_full_name|default:log.user.username }}
+          {% with fac=log.user.faculty %}
+            {% if fac %}{{ fac.full_name }}{% else %}{{ log.user.username }}{% endif %}
+          {% endwith %}
           <span style="color:#9ca3af;font-size:.85rem;"> — {{ log.user.username }}</span>
         {% else %}
           <span class="empty">—</span>
@@ -209,8 +212,12 @@
     <div class="field-row">
       <div class="field-label">Old value</div>
       <div class="field-value">
-        {% if log.old_value %}
-        <pre class="json-block">{{ log.old_value }}</pre>
+        {% if log.old_value is not None %}
+          {{ log.old_value|audit_value }}
+          <details style="margin-top:.5rem;">
+            <summary style="font-size:.75rem;color:#9ca3af;cursor:pointer;">Raw JSON</summary>
+            <pre class="json-block" style="margin-top:.4rem;">{{ log.old_value }}</pre>
+          </details>
         {% else %}<span class="empty">None / not set</span>{% endif %}
       </div>
     </div>
@@ -218,8 +225,12 @@
     <div class="field-row">
       <div class="field-label">New value</div>
       <div class="field-value">
-        {% if log.new_value %}
-        <pre class="json-block">{{ log.new_value }}</pre>
+        {% if log.new_value is not None %}
+          {{ log.new_value|audit_value }}
+          <details style="margin-top:.5rem;">
+            <summary style="font-size:.75rem;color:#9ca3af;cursor:pointer;">Raw JSON</summary>
+            <pre class="json-block" style="margin-top:.4rem;">{{ log.new_value }}</pre>
+          </details>
         {% else %}<span class="empty">None / not set</span>{% endif %}
       </div>
     </div>
