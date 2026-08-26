@@ -91,6 +91,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: .9rem;
+    table-layout: fixed;   /* ← enforce column widths, prevents overflow */
   }
   .log-table thead tr {
     background: var(--gsfc-blue);
@@ -131,7 +132,8 @@
 
   /* value cells */
   .val-cell {
-    max-width: 150px;
+    display: block;          /* ← required for max-width + overflow to work on a span */
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -259,15 +261,15 @@
   <table class="log-table">
     <thead>
       <tr>
-        <th>#</th>
-        <th>Timestamp</th>
-        <th>Faculty</th>
-        <th>Subject</th>
-        <th>Action</th>
-        <th>Field</th>
-        <th>Old value</th>
-        <th>New value</th>
-        <th></th>
+        <th style="width:40px;">#</th>
+        <th style="width:130px;">Timestamp</th>
+        <th style="width:110px;">Faculty</th>
+        <th style="width:110px;">Subject</th>
+        <th style="width:90px;">Action</th>
+        <th style="width:100px;">Field</th>
+        <th style="width:140px;">Old value</th>
+        <th style="width:140px;">New value</th>
+        <th style="width:60px;"></th>
       </tr>
     </thead>
     <tbody>
@@ -293,12 +295,12 @@
           {% endwith %}
         </td>
         <td style="font-family:monospace;font-size:.85rem;">{{ log.field_name|default:"—" }}</td>
-        <td style="max-width:160px;">
+        <td style="overflow:hidden;">
           {% if log.old_value is not None %}
             <span class="val-cell" title="{{ log.old_value }}">{{ log.old_value|truncatechars:40 }}</span>
           {% else %}<span class="val-empty">—</span>{% endif %}
         </td>
-        <td style="max-width:160px;">
+        <td style="overflow:hidden;">
           {% if log.new_value is not None %}
             <span class="val-cell" title="{{ log.new_value }}">{{ log.new_value|truncatechars:40 }}</span>
           {% else %}<span class="val-empty">—</span>{% endif %}
