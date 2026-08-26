@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}Audit Logs | GSFC Curriculum Builder{% endblock %}
 
@@ -292,15 +293,11 @@
           {% endwith %}
         </td>
         <td style="font-family:monospace;font-size:.85rem;">{{ log.field_name|default:"—" }}</td>
-        <td>
-          {% if log.old_value %}
-          <div class="val-cell" title="{{ log.old_value }}">{{ log.old_value }}</div>
-          {% else %}<span class="val-empty">—</span>{% endif %}
+        <td style="vertical-align:top;padding:.6rem 1rem;max-width:220px;">
+          {{ log.old_value|audit_value }}
         </td>
-        <td>
-          {% if log.new_value %}
-          <div class="val-cell" title="{{ log.new_value }}">{{ log.new_value }}</div>
-          {% else %}<span class="val-empty">—</span>{% endif %}
+        <td style="vertical-align:top;padding:.6rem 1rem;max-width:220px;">
+          {{ log.new_value|audit_value }}
         </td>
         <td>
           <a href="{% url 'audit_log_detail' log.pk %}" class="btn-detail">View →</a>
