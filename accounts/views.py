@@ -5,7 +5,7 @@ from datetime import datetime
 from django.conf import settings
 from io import BytesIO
 
-from adminpanel.models import Faculty, Subject, Semester, SemesterSubject
+from adminpanel.models import Faculty, Subject, SubjectFaculty, Semester, SemesterSubject
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -180,18 +180,21 @@ def syllabus_builder(request):
         
         target_syllabus_id = None
         
-        # 1. Try to find explicit draft
+        # 1. Try to find explicit draft.
+        #    Shared model: any faculty assigned to the subject can open it.
         if draft_id:
-             # Shared model: verify faculty is assigned to the subject, not that they own the syllabus.
              check = Syllabus.objects.filter(id=draft_id).first()
-             if check and check.subject in subjects:
+             if check and SubjectFaculty.objects.filter(faculty=faculty, subject=check.subject).exists():
                  target_syllabus_id = check.id
 
         # 2. Try implicit lookup via subject — find any existing syllabus for the subject.
         if not target_syllabus_id and subject_id:
              check = Syllabus.objects.filter(subject_id=subject_id).first()
-             if check and check.subject in subjects:
+             if check and SubjectFaculty.objects.filter(faculty=faculty, subject=check.subject).exists():
                  target_syllabus_id = check.id
+             elif not check and subject_id:
+                 # No syllabus yet — just verify the faculty is assigned to this subject
+                 pass  # subject_id will be used below to pre-select the subject
 
         # 3. Load full data if we have an ID
         if target_syllabus_id:
@@ -200,7 +203,7 @@ def syllabus_builder(request):
         # 4. Auto-fill from any existing final version if still no data
         if not saved_syllabus and subject_id:
              final = Syllabus.objects.filter(subject_id=subject_id, status='final').order_by('-updated_at').first()
-             if final and final.subject in subjects:
+             if final and SubjectFaculty.objects.filter(faculty=faculty, subject=final.subject).exists():
                  saved_syllabus = load_full_syllabus(final.id)
 
         # Bind Data
