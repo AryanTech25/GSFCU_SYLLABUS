@@ -20,9 +20,14 @@
     margin-bottom: 1.5rem;
   }
   .filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;   /* inputs and buttons share the same baseline */
     gap: 1rem;
+  }
+  .filter-group {
+    flex: 1;
+    min-width: 140px;
   }
   .filter-group label {
     display: block;
@@ -52,8 +57,7 @@
   .filter-actions {
     display: flex;
     gap: .75rem;
-    align-items: flex-end;
-    padding-top: 1.2rem; /* align with inputs */
+    flex-shrink: 0;
   }
   .btn-filter {
     background: var(--gsfc-blue);
