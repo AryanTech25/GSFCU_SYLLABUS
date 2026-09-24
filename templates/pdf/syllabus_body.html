@@ -202,21 +202,7 @@
             <tr>
                 <td class="bold">{{ co.code }}</td>
                 <td>
-                    {% if "this is c" in co.description|lower or "this is co" in co.description|lower or "co " in co.description|lower and " it is" in co.description|lower or co.description|length < 15 %}
-                        {% if co.code == "CO1" %}
-                            Students will be able to analyze, design, and implement efficient data structures and algorithms for complex problems.
-                        {% elif co.code == "CO2" %}
-                            Students will be able to apply design patterns and software engineering principles to build scalable software systems.
-                        {% elif co.code == "CO3" %}
-                            Students will be able to design and manage relational databases, writing complex and optimized SQL queries.
-                        {% elif co.code == "CO4" %}
-                            Students will be able to configure and deploy cloud-based services and containerized web applications.
-                        {% else %}
-                            Students will be able to debug, test, and profile software applications to ensure high quality and performance.
-                        {% endif %}
-                    {% else %}
-                        {{ co.description }}
-                    {% endif %}
+                    {{ co.description }}
                 </td>
             </tr>
             {% endfor %}
