@@ -24,3 +24,6 @@ syllabus_pdfs/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Database backups
+backups/
