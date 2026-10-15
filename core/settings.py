@@ -129,6 +129,9 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'faculty_dashboard'
 
+# Force login every time the browser is closed (prevents unattended sessions on campus/shared PCs)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
 # Media Files (PDFs)
 MEDIA_URL = '/syllabus_pdfs/'
 MEDIA_ROOT = BASE_DIR / 'syllabus_pdfs'

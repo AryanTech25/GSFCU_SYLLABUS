@@ -79,16 +79,18 @@ def faculty_dashboard(request):
             # Shared syllabus: any faculty assigned to the subject shares the same record.
             # Look up the syllabus by subject only — faculty ownership is irrelevant here.
             shared = Syllabus.objects.filter(subject=sub).first()
+            is_draft = shared is not None and shared.status == 'draft'
             subjects_data.append({
                 'subject': sub,
                 'has_draft': shared is not None,
+                'is_draft': is_draft,
                 'draft_id': shared.id if shared else None,
                 'has_pdf': bool(shared and shared.pdf_file),
                 'pdf_url': shared.pdf_file.url if (shared and shared.pdf_file) else None,
             })
 
-        # Check if any drafts exist
-        has_drafts = any(item['has_draft'] for item in subjects_data)
+        # Check if any draft-status syllabi exist for assigned subjects
+        has_drafts = any(item['is_draft'] for item in subjects_data)
 
     # SEMESTER MERGE Logic
     mergeable_semesters = []
@@ -121,9 +123,12 @@ def faculty_drafts(request):
     from adminpanel.models import Syllabus
     try:
         faculty = Faculty.objects.get(user=request.user)
+        # Shared syllabus model: get drafts for all subjects assigned to this faculty
+        assigned_subject_ids = faculty.subjects.values_list('id', flat=True)
         drafts = Syllabus.objects.filter(
-            faculty=faculty, status='draft'
-        ).select_related('subject').order_by('-updated_at')
+            subject_id__in=assigned_subject_ids,
+            status='draft'
+        ).select_related('subject', 'faculty').order_by('-updated_at')
     except Faculty.DoesNotExist:
         faculty = None
         drafts = []
