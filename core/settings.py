@@ -127,7 +127,27 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Authentication
 LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'faculty_dashboard'
 
 # Media Files (PDFs)
 MEDIA_URL = '/syllabus_pdfs/'
 MEDIA_ROOT = BASE_DIR / 'syllabus_pdfs'
+
+# ─── Email Configuration ───────────────────────────────────────────────────
+# Dev:  prints the reset link to the terminal (no SMTP needed)
+# Prod: set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend in .env
+import os
+
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend'  # default: dev console
+)
+EMAIL_HOST          = os.environ.get('EMAIL_HOST',     'smtp.gmail.com')
+EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS       = os.environ.get('EMAIL_USE_TLS',  'True') == 'True'
+EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'GSFC Curriculum Builder <noreply@gsfcuniversity.ac.in>')
+
+# Password reset link expires after 1 day (86400 seconds)
+PASSWORD_RESET_TIMEOUT = 86400

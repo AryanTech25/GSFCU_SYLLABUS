@@ -325,6 +325,43 @@ def unassign_subject_from_faculty(request, faculty_id):
 @login_required
 @user_passes_test(is_admin, login_url='/login/')
 @require_POST
+def admin_set_faculty_password(request, faculty_id):
+    """
+    Admin-only: set a new password for a faculty member directly.
+    No email required — useful when a faculty is locked out.
+    """
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError
+
+    faculty = get_object_or_404(Faculty, id=faculty_id)
+    new_password  = request.POST.get('new_password', '').strip()
+    confirm       = request.POST.get('confirm_password', '').strip()
+
+    if not new_password:
+        messages.error(request, 'Password cannot be empty.')
+        return redirect('edit_faculty', faculty_id=faculty_id)
+
+    if new_password != confirm:
+        messages.error(request, 'Passwords do not match.')
+        return redirect('edit_faculty', faculty_id=faculty_id)
+
+    try:
+        validate_password(new_password, user=faculty.user)
+    except ValidationError as e:
+        for err in e.messages:
+            messages.error(request, err)
+        return redirect('edit_faculty', faculty_id=faculty_id)
+
+    faculty.user.set_password(new_password)
+    faculty.user.save()
+    messages.success(request, f"Password for {faculty.full_name} has been updated successfully.")
+    return redirect('edit_faculty', faculty_id=faculty_id)
+
+
+@never_cache
+@login_required
+@user_passes_test(is_admin, login_url='/login/')
+@require_POST
 def delete_syllabus(request, syllabus_id):
     syllabus = get_object_or_404(Syllabus, id=syllabus_id)
     try:
