@@ -1,0 +1,13 @@
+<div class="sb-card">
+    <h2 class="sb-title">Syllabus Preview</h2>
+    <div class="sb-preview-page" id="syllabusPreview"></div>
+</div>
+<div class="sb-actions">
+    <button type="button" class="sb-btn sb-btn-secondary" data-step-prev="7">&#9999; Edit</button>
+    <div style="display:flex;gap:1rem;">
+        <button type="button" class="sb-btn sb-btn-yellow" id="saveDraftBtn" data-action="ajax-save">&#128190; Save Draft</button>
+        <button type="button" class="sb-btn sb-btn-primary" id="btn-generate-pdf"
+            data-pdf-url="{% if saved_syllabus %}{% url 'generate_pdf' saved_syllabus.id %}{% endif %}"
+            data-action="generate-pdf">&#128196; Generate PDF</button>
+    </div>
+</div>

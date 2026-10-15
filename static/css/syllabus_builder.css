@@ -1,0 +1,179 @@
+/* syllabus_builder.css
+   All styles specific to the Syllabus Builder view.
+   Base layout, SB component classes and responsive overrides live in gsfc-global.css.
+   This file adds: spinner, toast, sticky save-bar, validation states.
+*/
+
+/* ── Sticky save-bar bottom padding so content is never hidden ─────────── */
+.sb-container { padding-bottom: 4.5rem; }
+
+/* ── Spinner animation ─────────────────────────────────────────────────── */
+@keyframes sb-spin { to { transform: rotate(360deg); } }
+
+.sb-spinner-ring {
+    width: 18px;
+    height: 18px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: sb-spin .7s linear infinite;
+}
+
+/* ── Toast notification ────────────────────────────────────────────────── */
+#sb-toast {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.5rem;
+    padding: .75rem 1.25rem;
+    border-radius: 8px;
+    font-size: .9rem;
+    font-weight: 600;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .18);
+    z-index: 10000;
+    transform: translateY(-12px);
+    opacity: 0;
+    transition: all .25s ease;
+    pointer-events: none;
+    max-width: 380px;
+}
+#sb-toast.show  { transform: translateY(0); opacity: 1; }
+#sb-toast.success { background: #16a34a; }
+#sb-toast.error   { background: #dc2626; }
+
+/* ── Sticky Save-Draft bar ─────────────────────────────────────────────── */
+.sb-save-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 2px solid #e2e8f0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, .10);
+    padding: .75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    z-index: 9000;
+}
+
+.sb-save-bar__progress {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.sb-save-bar__progress-label {
+    font-size: .82rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.sb-save-bar__progress-track {
+    flex: 1;
+    background: #e5e7eb;
+    border-radius: 9999px;
+    height: 8px;
+    max-width: 200px;
+    overflow: hidden;
+}
+
+.sb-save-bar__progress-fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+    width: 0%;
+    transition: width .4s ease;
+}
+
+.sb-save-bar__pct {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #1e40af;
+    white-space: nowrap;
+}
+
+.sb-save-bar__btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    border: none;
+    padding: .55rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    transition: opacity .15s;
+    white-space: nowrap;
+}
+.sb-save-bar__btn:hover { opacity: .9; }
+
+.sb-save-bar__spinner {
+    display: none;
+    align-items: center;
+    gap: .5rem;
+    color: #64748b;
+    font-size: .85rem;
+}
+
+/* ── Validation states ─────────────────────────────────────────────────── */
+.sb-input.invalid,
+.sb-textarea.invalid,
+.sb-select.invalid {
+    border: 2px solid #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+
+/* ── Edit-mode banner ──────────────────────────────────────────────────── */
+.sb-edit-banner {
+    background-color: #f0f9ff;
+    border-left: 4px solid #0ea5e9;
+    color: #0c4a6e;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.sb-edit-banner__date {
+    font-size: .9rem;
+    color: #64748b;
+}
+
+/* ── Error banner ──────────────────────────────────────────────────────── */
+.sb-error-banner {
+    background-color: #fee2e2;
+    border-left: 4px solid #ef4444;
+    color: #b91c1c;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+}
+
+/* ── Section sub-headings ──────────────────────────────────────────────── */
+.sb-section-head {
+    margin-top: 1rem;
+    margin-bottom: .5rem;
+    color: var(--sb-primary);
+}
+
+/* ── Weightage total display ───────────────────────────────────────────── */
+.sb-weight-total {
+    margin-top: 1rem;
+    text-align: right;
+    font-weight: bold;
+}
+
+/* ── Eval columns ──────────────────────────────────────────────────────── */
+.sb-eval-cols {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+.sb-eval-col { flex: 1; min-width: 260px; }
