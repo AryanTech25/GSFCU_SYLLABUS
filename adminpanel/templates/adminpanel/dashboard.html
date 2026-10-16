@@ -154,6 +154,116 @@
 
 </div>
 
+<!-- ── Pending Approvals Queue ─────────────────────────────────────── -->
+{% if pending_syllabi %}
+<div class="table-container" style="margin-bottom:2rem;">
+    <div class="header-row" style="display:flex;align-items:center;justify-content:space-between;">
+        <h3 style="margin:0;">
+            ⏳ Pending Approvals
+            <span style="background:#ef4444;color:#fff;border-radius:9999px;font-size:.78rem;
+                         padding:.2rem .65rem;margin-left:.5rem;font-weight:700;">
+                {{ pending_count }}
+            </span>
+        </h3>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div style="margin:.75rem 0;padding:.75rem 1rem;border-radius:6px;
+        {% if message.tags == 'success' %}background:#dcfce7;color:#166534;border:1px solid #bbf7d0;
+        {% else %}background:#fee2e2;color:#991b1b;border:1px solid #fecaca;{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+        <thead>
+            <tr style="background:var(--gsfc-blue);color:#fff;">
+                <th style="padding:.75rem 1rem;text-align:left;">Subject</th>
+                <th style="padding:.75rem 1rem;text-align:left;">Faculty</th>
+                <th style="padding:.75rem 1rem;text-align:left;">Submitted</th>
+                <th style="padding:.75rem 1rem;text-align:left;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for syl in pending_syllabi %}
+        <tr style="border-bottom:1px solid #e5e7eb;">
+            <td style="padding:.75rem 1rem;">
+                <strong>{{ syl.subject.course_code }}</strong><br>
+                <span style="color:#6b7280;font-size:.85rem;">{{ syl.subject.course_name }}</span>
+            </td>
+            <td style="padding:.75rem 1rem;">
+                {% if syl.faculty %}{{ syl.faculty.full_name }}{% else %}—{% endif %}
+            </td>
+            <td style="padding:.75rem 1rem;color:#6b7280;font-size:.85rem;">
+                {% if syl.submitted_at %}{{ syl.submitted_at|date:"d M Y H:i" }}{% else %}—{% endif %}
+            </td>
+            <td style="padding:.75rem 1rem;">
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+                    <!-- View in builder -->
+                    <a href="{% url 'syllabus_builder' %}?draft_id={{ syl.id }}" target="_blank"
+                       style="background:#1e293b;color:#fff;padding:.35rem .85rem;border-radius:5px;
+                              font-size:.82rem;text-decoration:none;font-weight:600;">👁 View</a>
+                    <!-- Approve -->
+                    <form method="POST" action="{% url 'approve_syllabus' syl.id %}"
+                          onsubmit="return confirm('Approve this syllabus and mark it as Final?');"
+                          style="margin:0;">
+                        {% csrf_token %}
+                        <button type="submit"
+                                style="background:#16a34a;color:#fff;padding:.35rem .85rem;border:none;
+                                       border-radius:5px;font-size:.82rem;font-weight:600;cursor:pointer;">
+                            ✓ Approve
+                        </button>
+                    </form>
+                    <!-- Request Revision -->
+                    <button type="button"
+                            onclick="document.getElementById('rev-modal-{{ syl.id }}').style.display='flex';"
+                            style="background:#f59e0b;color:#fff;padding:.35rem .85rem;border:none;
+                                   border-radius:5px;font-size:.82rem;font-weight:600;cursor:pointer;">
+                        ↩ Revise
+                    </button>
+                </div>
+                <!-- Revision Modal -->
+                <div id="rev-modal-{{ syl.id }}"
+                     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+                            z-index:9999;align-items:center;justify-content:center;">
+                    <div style="background:#fff;border-radius:10px;padding:2rem;width:480px;max-width:95vw;
+                                box-shadow:0 20px 60px rgba(0,0,0,.3);">
+                        <h3 style="margin:0 0 .5rem;">↩ Request Revision</h3>
+                        <p style="color:#6b7280;font-size:.875rem;margin-bottom:1rem;">
+                            <strong>{{ syl.subject.course_name }}</strong> — describe what needs to be fixed.
+                        </p>
+                        <form method="POST" action="{% url 'request_revision' syl.id %}">
+                            {% csrf_token %}
+                            <textarea name="remarks" required rows="4"
+                                      placeholder="e.g. Please revise Course Outcome 2 and update the textbook list..."
+                                      style="width:100%;padding:.6rem;border:1px solid #d1d5db;border-radius:6px;
+                                             font-size:.9rem;resize:vertical;box-sizing:border-box;margin-bottom:1rem;"></textarea>
+                            <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+                                <button type="button"
+                                        onclick="document.getElementById('rev-modal-{{ syl.id }}').style.display='none';"
+                                        style="background:#f1f5f9;color:#374151;padding:.5rem 1.2rem;
+                                               border:1px solid #d1d5db;border-radius:5px;cursor:pointer;font-weight:600;">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                        style="background:#dc2626;color:#fff;padding:.5rem 1.2rem;
+                                               border:none;border-radius:5px;cursor:pointer;font-weight:600;">
+                                    Send Request
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 <!-- Faculty Data Table -->
 <div class="table-container">
     <div class="header-row">

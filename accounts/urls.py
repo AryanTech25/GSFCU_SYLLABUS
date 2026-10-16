@@ -20,6 +20,10 @@ urlpatterns = [
     path('audit-logs/', views.audit_log_list, name='audit_log_list'),
     path('audit-logs/<int:log_id>/', views.audit_log_detail, name='audit_log_detail'),
 
+    # ── Approval Workflow ─────────────────────────────────────────────────
+    path('faculty/submit-for-review/<int:syllabus_id>/',
+         views.submit_for_review, name='submit_for_review'),
+
     # ── Password Reset (Django built-in flow) ──────────────────────────────
     path('password-reset/',
          auth_views.PasswordResetView.as_view(

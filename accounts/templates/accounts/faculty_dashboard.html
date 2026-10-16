@@ -22,7 +22,7 @@
         {% endif %}
     </div>
 
-    <!-- Stats or Info Actions can go here -->
+    <!-- Quick Actions -->
     <div class="card">
         <h3 class="card-title">Quick Actions</h3>
         <p class="card-desc">Select a subject below to manage its syllabus.</p>
@@ -52,6 +52,7 @@
                 <th>Course Code</th>
                 <th>Course Name</th>
                 <th>Description</th>
+                <th>Status</th>
                 <th>Action</th>
             </tr>
         </thead>
@@ -62,35 +63,78 @@
                 <td>{{ item.subject.course_name }}</td>
                 <td>{{ item.subject.description }}</td>
                 <td>
+                    {% if item.syllabus_status == 'final' %}
+                        <span style="background:#dcfce7;color:#166534;padding:.25rem .7rem;border-radius:9999px;font-size:.78rem;font-weight:700;">✓ Approved</span>
+                    {% elif item.syllabus_status == 'submitted' %}
+                        <span style="background:#dbeafe;color:#1e40af;padding:.25rem .7rem;border-radius:9999px;font-size:.78rem;font-weight:700;">⏳ Under Review</span>
+                    {% elif item.syllabus_status == 'revision_requested' %}
+                        <span style="background:#fef3c7;color:#92400e;padding:.25rem .7rem;border-radius:9999px;font-size:.78rem;font-weight:700;">⚠ Revision Needed</span>
+                    {% elif item.has_draft %}
+                        <span style="background:#e0e7ff;color:#3730a3;padding:.25rem .7rem;border-radius:9999px;font-size:.78rem;font-weight:700;">Draft</span>
+                    {% else %}
+                        <span style="color:#9ca3af;font-size:.85rem;">—</span>
+                    {% endif %}
+                </td>
+                <td>
                     <div style="display: flex; gap: 0.5rem; flex-direction: column;">
-                        {% if item.has_draft %}
-                        <div style="display:flex; gap:4px; flex-direction: column;">
-                            <a href="{% url 'syllabus_builder' %}?draft_id={{ item.draft_id }}" class="btn"
-                                style="background-color: white; color: var(--gsfc-yellow); border: 1px solid var(--gsfc-yellow); padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; font-weight: bold; text-align: center;">
-                                ✏ Edit Syllabus
-                            </a>
+                        {% if item.syllabus_status == 'submitted' %}
+                            <!-- Locked: under review -->
+                            <span style="color:#6b7280;font-size:.85rem;">🔒 Awaiting admin review</span>
+
+                        {% elif item.syllabus_status == 'final' %}
+                            <!-- Approved: view PDF + request revision -->
                             {% if item.has_pdf %}
-                            <a href="{{ item.pdf_url }}" class="btn" target="_blank"
-                                style="background-color: var(--gsfc-success); color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; text-align: center;">
+                            <a href="{{ item.pdf_url }}" target="_blank"
+                                style="background-color:var(--gsfc-success);color:white;padding:4px 8px;border-radius:4px;text-decoration:none;font-size:.9rem;text-align:center;">
                                 👁 View Syllabus
                             </a>
                             {% endif %}
-                        </div>
+                            <a href="{% url 'syllabus_builder' %}?draft_id={{ item.draft_id }}"
+                                style="background-color:white;color:#6b7280;border:1px solid #d1d5db;padding:4px 8px;border-radius:4px;text-decoration:none;font-size:.85rem;text-align:center;">
+                                👁 View (Read-only)
+                            </a>
+
+                        {% elif item.syllabus_status == 'revision_requested' %}
+                            <!-- Revision requested: show remark + edit + submit -->
+                            {% if item.review_remarks %}
+                            <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;font-size:.82rem;color:#92400e;margin-bottom:.25rem;">
+                                <strong>Admin Feedback:</strong> {{ item.review_remarks }}
+                            </div>
+                            {% endif %}
+                            <a href="{% url 'syllabus_builder' %}?draft_id={{ item.draft_id }}" class="btn"
+                                style="background-color:var(--gsfc-yellow);color:var(--gsfc-blue-dark);border:1px solid var(--gsfc-yellow);padding:4px 8px;border-radius:4px;text-decoration:none;font-size:.9rem;font-weight:bold;text-align:center;">
+                                ✏ Edit & Resubmit
+                            </a>
+
+                        {% elif item.has_draft %}
+                            <!-- Draft: edit + optional submit -->
+                            <a href="{% url 'syllabus_builder' %}?draft_id={{ item.draft_id }}" class="btn"
+                                style="background-color:white;color:var(--gsfc-yellow);border:1px solid var(--gsfc-yellow);padding:4px 8px;border-radius:4px;text-decoration:none;font-size:.9rem;font-weight:bold;text-align:center;">
+                                ✏ Edit Syllabus
+                            </a>
+                            {% if item.has_pdf %}
+                            <a href="{{ item.pdf_url }}" target="_blank"
+                                style="background-color:var(--gsfc-success);color:white;padding:4px 8px;border-radius:4px;text-decoration:none;font-size:.9rem;text-align:center;">
+                                👁 View Syllabus
+                            </a>
+                            {% endif %}
+
                         {% else %}
-                        <a href="{% url 'syllabus_builder' %}?subject_id={{ item.subject.id }}" class="btn"
-                            style="background-color: var(--gsfc-blue); color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 0.9rem; text-align: center;">
-                            Create New Syllabus
-                        </a>
+                            <!-- No syllabus yet -->
+                            <a href="{% url 'syllabus_builder' %}?subject_id={{ item.subject.id }}" class="btn"
+                                style="background-color:var(--gsfc-blue);color:white;padding:4px 8px;border-radius:4px;text-decoration:none;font-size:.9rem;text-align:center;">
+                                Create New Syllabus
+                            </a>
                         {% endif %}
                     </div>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4" style="text-align: center; color: var(--text-light);">No subjects assigned yet.</td>
+                <td colspan="5" style="text-align: center; color: var(--text-light);">No subjects assigned yet.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-{% endblock %}
+{% endblock %}

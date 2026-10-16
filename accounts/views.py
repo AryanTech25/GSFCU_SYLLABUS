@@ -10,7 +10,9 @@ from adminpanel.models import Faculty, Subject, SubjectFaculty, Semester, Semest
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 from django.http import HttpResponseForbidden, JsonResponse
+from django.contrib import messages
 from .utils import load_full_syllabus
 
 @never_cache
@@ -84,6 +86,8 @@ def faculty_dashboard(request):
                 'subject': sub,
                 'has_draft': shared is not None,
                 'is_draft': is_draft,
+                'syllabus_status': shared.status if shared else None,
+                'review_remarks': shared.review_remarks if shared else None,
                 'draft_id': shared.id if shared else None,
                 'has_pdf': bool(shared and shared.pdf_file),
                 'pdf_url': shared.pdf_file.url if (shared and shared.pdf_file) else None,
@@ -123,11 +127,11 @@ def faculty_drafts(request):
     from adminpanel.models import Syllabus
     try:
         faculty = Faculty.objects.get(user=request.user)
-        # Shared syllabus model: get drafts for all subjects assigned to this faculty
+        # Show all active (non-final) syllabi for assigned subjects
         assigned_subject_ids = faculty.subjects.values_list('id', flat=True)
         drafts = Syllabus.objects.filter(
             subject_id__in=assigned_subject_ids,
-            status='draft'
+            status__in=('draft', 'submitted', 'revision_requested')
         ).select_related('subject', 'faculty').order_by('-updated_at')
     except Faculty.DoesNotExist:
         faculty = None
@@ -558,16 +562,36 @@ def syllabus_builder(request):
                              'status': 'draft'
                          }
                      )
-                     
-                     # Ensure it is currently a draft (in case we loaded a 'final' row, we might need logic here)
-                     # Since this is "Save Draft", if the row exists and is "final", we are technically modifying the LIVE syllabus?
-                     # The prompt implies we should be careful. 
-                     # Ideally, 'final' syllabi shouldn't be touched properly without versioning, but user said "Draft vs Edit logic is inconsistent"
-                     # If row exists, we update it.
-                     if syllabus.status != 'draft':
-                         syllabus.status = 'draft' # Revert to draft on edit? Or user intends to edit final.
-                         # For now, update timestamp and status.
-                     
+
+                     # ── Approval Workflow: enforce server-side lock ────────
+                     # submitted → locked until admin makes a decision.
+                     # final     → locked; must go through revision_requested.
+                     # revision_requested → editable again.
+                     LOCKED_STATUSES = ('submitted', 'final')
+                     if syllabus.status in LOCKED_STATUSES:
+                         status_label = dict(Syllabus.STATUS_CHOICES).get(
+                             syllabus.status, syllabus.status
+                         )
+                         err = (
+                             f'This syllabus is currently "{status_label}" '
+                             f'and cannot be edited. '
+                             + ('Contact admin to request a revision.'
+                                if syllabus.status == 'final'
+                                else 'Please wait for admin review to complete.')
+                         )
+                         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                             return JsonResponse({'ok': False, 'error': err}, status=403)
+                         return render(request, 'accounts/syllabus_builder.html', {
+                             'faculty': faculty,
+                             'semesters': semesters,
+                             'selected_subject': subject,
+                             'saved_syllabus': syllabus,
+                             'savedDraftData': None,
+                             'error': err,
+                             'is_locked': True,
+                             'syllabus_status': syllabus.status,
+                         })
+
                      # Shared syllabus: keep the original creator as faculty.
                      # Any faculty assigned to the subject can save edits — do NOT overwrite faculty.
                      # 3. Update Fields — cast to proper Python types so the
@@ -870,6 +894,77 @@ def syllabus_builder(request):
     context['savedDraftData'] = draft_data if draft_data else None
 
     return render(request, 'accounts/syllabus_builder.html', context)
+
+
+@never_cache
+@login_required
+@require_POST
+def submit_for_review(request, syllabus_id):
+    """
+    Faculty submits a completed syllabus for admin review.
+    Requires:
+      - Faculty must be assigned to the syllabus subject.
+      - Syllabus must be in 'draft' or 'revision_requested' state.
+      - Syllabus must pass is_complete() check.
+    Sets status → 'submitted', records submitted_at, logs to audit.
+    """
+    from adminpanel.models import Syllabus, SubjectFaculty
+    from accounts.audit_logger import AuditLogger
+    from django.utils import timezone
+
+    try:
+        faculty = Faculty.objects.get(user=request.user)
+    except Faculty.DoesNotExist:
+        messages.error(request, 'Faculty profile not found.')
+        return redirect('faculty_dashboard')
+
+    syllabus = get_object_or_404(Syllabus, id=syllabus_id)
+
+    # 1. Permission: faculty must be assigned to the subject
+    if not SubjectFaculty.objects.filter(faculty=faculty, subject=syllabus.subject).exists():
+        messages.error(request, 'You are not assigned to this subject.')
+        return redirect('faculty_dashboard')
+
+    # 2. State: only draft / revision_requested can be submitted
+    if syllabus.status not in ('draft', 'revision_requested'):
+        label = dict(Syllabus.STATUS_CHOICES).get(syllabus.status, syllabus.status)
+        messages.error(request, f'Cannot submit — syllabus is currently "{label}".')
+        return redirect('faculty_dashboard')
+
+    # 3. Completeness gate
+    is_done, missing = syllabus.is_complete()
+    if not is_done:
+        missing_str = ', '.join(missing[:5])
+        messages.error(
+            request,
+            f'Syllabus is incomplete and cannot be submitted. Missing: {missing_str}.'
+        )
+        return redirect('faculty_drafts')
+
+    # 4. Transition
+    old_status = syllabus.status
+    syllabus.status = 'submitted'
+    syllabus.submitted_at = timezone.now()
+    syllabus.save(update_fields=['status', 'submitted_at'])
+
+    # 5. Audit log
+    AuditLogger.log_change(
+        syllabus=syllabus,
+        user=request.user,
+        ip_address=AuditLogger.get_client_ip(request),
+        model_name='Syllabus',
+        record_id=syllabus.pk,
+        field_name='status',
+        old_value=old_status,
+        new_value='submitted',
+        action_type='status_change',
+    )
+
+    messages.success(
+        request,
+        f'"{syllabus.subject.course_name}" has been submitted for admin review.'
+    )
+    return redirect('faculty_drafts')
 
 
 @never_cache

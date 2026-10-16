@@ -11,6 +11,9 @@ urlpatterns = [
     path('faculty/delete/<int:faculty_id>/', views.delete_faculty, name='delete_faculty'),
     path('subject/create/', views.create_subject, name='create_subject'),
     path('subject/delete/<int:subject_id>/', views.delete_subject, name='delete_subject'),
+    # ── Approval Workflow ────────────────────────────────────────────────
+    path('syllabus/<int:syllabus_id>/approve/', views.approve_syllabus, name='approve_syllabus'),
+    path('syllabus/<int:syllabus_id>/request-revision/', views.request_revision, name='request_revision'),
     path('syllabus/delete/<int:syllabus_id>/', views.delete_syllabus, name='delete_syllabus'),
     path('semester/manage/', views.manage_semester_structure, name='manage_semester_structure'),
     path('semester/generate-pdf/', views.generate_semester_pdf, name='generate_semester_pdf'),

@@ -212,18 +212,21 @@
           <td>{{ d.subject.semester|default:d.faculty.semester }}</td>
           <td>{{ d.updated_at|date:"d M Y H:i" }}</td>
           <td>
-            <span style="background:#e0e7ff;color:#3730a3;padding:.2rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:700;">
-              Draft
-            </span>
+            {% if d.status == 'submitted' %}
+              <span style="background:#dbeafe;color:#1e40af;padding:.2rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:700;">⏳ Under Review</span>
+            {% elif d.status == 'revision_requested' %}
+              <span style="background:#fef3c7;color:#92400e;padding:.2rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:700;">⚠ Revision Needed</span>
+            {% else %}
+              <span style="background:#e0e7ff;color:#3730a3;padding:.2rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:700;">Draft</span>
+            {% endif %}
           </td>
 
-          <!-- Task 13.1 + 13.2: completeness badge with tooltip for missing fields -->
+          <!-- Completeness -->
           <td>
             {% if item.is_complete %}
               <span class="badge-complete">✓ Complete</span>
             {% else %}
               {% if item.missing %}
-              {# Build tooltip text from missing field list #}
               {% with tip_text=item.missing|join:"\n• " %}
               <span class="badge-incomplete" data-tooltip="Missing:&#10;• {{ tip_text }}">
                 {{ item.pct }}% ▾
@@ -242,29 +245,63 @@
 
           <!-- Actions -->
           <td>
-            <a href="{% url 'syllabus_builder' %}?draft_id={{ d.id }}" class="btn-open">
-              ✏ Edit
-            </a>
+            {% if d.status == 'submitted' %}
+              <!-- Locked: awaiting review -->
+              <span style="color:#6b7280;font-size:.85rem;">🔒 Awaiting review</span>
 
-            {% if item.is_complete %}
-            <!-- Task 13.4: PDF enabled for complete drafts -->
-            <a href="{% url 'generate_pdf' d.id %}" class="btn-pdf">
-              📄 PDF
-            </a>
+            {% elif d.status == 'revision_requested' %}
+              <!-- Admin feedback + edit -->
+              {% if d.review_remarks %}
+              <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:5px;padding:.4rem .6rem;font-size:.8rem;color:#92400e;margin-bottom:.4rem;">
+                <strong>Admin:</strong> {{ d.review_remarks }}
+              </div>
+              {% endif %}
+              <a href="{% url 'syllabus_builder' %}?draft_id={{ d.id }}" class="btn-open">
+                ✏ Edit & Resubmit
+              </a>
+              {% if item.is_complete %}
+              <form method="POST" action="{% url 'submit_for_review' d.id %}"
+                    onsubmit="return confirm('Submit this revised syllabus for admin review?');"
+                    style="display:inline;">
+                {% csrf_token %}
+                <button type="submit"
+                        style="background:#16a34a;color:#fff;padding:.45rem 1rem;border:none;border-radius:5px;font-size:.85rem;font-weight:600;cursor:pointer;margin-left:.4rem;">
+                  📤 Resubmit
+                </button>
+              </form>
+              {% endif %}
+
             {% else %}
-            <!-- Task 13.4: PDF disabled for incomplete drafts (Requirements: 6.3, 6.4) -->
-            {% if item.missing %}
-            {% with tip_text=item.missing|join:", " %}
-            <span class="btn-pdf-disabled"
-                  data-tooltip="Complete first:&#10;• {{ tip_text }}"
-                  aria-disabled="true"
-                  title="Syllabus is incomplete — finish all required sections before generating PDF.">
-              📄 PDF
-            </span>
-            {% endwith %}
-            {% else %}
-            <span class="btn-pdf-disabled" title="Syllabus is incomplete.">📄 PDF</span>
-            {% endif %}
+              <!-- Draft: edit + submit if complete -->
+              <a href="{% url 'syllabus_builder' %}?draft_id={{ d.id }}" class="btn-open">
+                ✏ Edit
+              </a>
+
+              {% if item.is_complete %}
+              <a href="{% url 'generate_pdf' d.id %}" class="btn-pdf">📄 PDF</a>
+              <form method="POST" action="{% url 'submit_for_review' d.id %}"
+                    onsubmit="return confirm('Submit this syllabus for admin review? You will not be able to edit it until the admin responds.');"
+                    style="display:inline;margin-left:.4rem;">
+                {% csrf_token %}
+                <button type="submit"
+                        style="background:#2563eb;color:#fff;padding:.45rem 1rem;border:none;border-radius:5px;font-size:.85rem;font-weight:600;cursor:pointer;">
+                  📤 Submit for Review
+                </button>
+              </form>
+              {% else %}
+              {% if item.missing %}
+              {% with tip_text=item.missing|join:", " %}
+              <span class="btn-pdf-disabled"
+                    data-tooltip="Complete first:&#10;• {{ tip_text }}"
+                    aria-disabled="true"
+                    title="Syllabus is incomplete — finish all required sections before generating PDF.">
+                📄 PDF
+              </span>
+              {% endwith %}
+              {% else %}
+              <span class="btn-pdf-disabled" title="Syllabus is incomplete.">📄 PDF</span>
+              {% endif %}
+              {% endif %}
             {% endif %}
           </td>
         </tr>
@@ -272,7 +309,7 @@
         {% empty %}
         <tr class="empty-row">
           <td colspan="7">
-            No drafts found. <a href="{% url 'faculty_dashboard' %}">Create a new syllabus</a>.
+            No active syllabi found. <a href="{% url 'faculty_dashboard' %}">Create a new syllabus</a>.
           </td>
         </tr>
         {% endfor %}

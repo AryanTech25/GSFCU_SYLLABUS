@@ -129,8 +129,10 @@ class Syllabus(models.Model):
         ('VAC', 'Value Added Courses'),
     ]
     STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('final', 'Final Submission'),
+        ('draft',              'Draft'),
+        ('submitted',          'Submitted for Review'),
+        ('revision_requested', 'Revision Requested'),
+        ('final',              'Final Submission'),
     ]
     COURSE_FOCUS_CHOICES = [
         ('Employability', 'Employability'),
@@ -166,6 +168,21 @@ class Syllabus(models.Model):
     # PDF Output
     pdf_file = models.FileField(upload_to='', null=True, blank=True)
     pdf_generated_at = models.DateTimeField(null=True, blank=True)
+
+    # ── Approval Workflow ─────────────────────────────────────────────────
+    # submitted_at: set when faculty submits for review; cleared on revision.
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    # review_remarks: admin's feedback when requesting revision.
+    # Preserved in audit log on each cycle; only latest is shown here.
+    review_remarks = models.TextField(null=True, blank=True)
+    # reviewed_by / reviewed_at: track who made the last approval decision.
+    reviewed_by = models.ForeignKey(
+        'auth.User',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='reviewed_syllabi',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     def is_complete(self):
         """

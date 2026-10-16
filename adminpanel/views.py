@@ -21,7 +21,7 @@ def is_admin(user):
 def admin_dashboard(request):
     faculties = Faculty.objects.select_related('school', 'program', 'branch').prefetch_related('subjects__syllabus').all()
     schools = School.objects.all()
-    
+
     # Search functionality
     query = request.GET.get('q')
     if query:
@@ -31,10 +31,20 @@ def admin_dashboard(request):
             Q(subjects__course_name__icontains=query)
         ).distinct()
 
+    # ── Approval Workflow: pending review queue ────────────────────────────
+    pending_syllabi = (
+        Syllabus.objects
+        .filter(status='submitted')
+        .select_related('subject', 'faculty')
+        .order_by('submitted_at')          # oldest first — longest waiting
+    )
+
     return render(request, 'adminpanel/dashboard.html', {
         'faculties': faculties,
         'schools': schools,
-        'query': query
+        'query': query,
+        'pending_syllabi': pending_syllabi,
+        'pending_count': pending_syllabi.count(),
     })
 
 
@@ -356,6 +366,113 @@ def admin_set_faculty_password(request, faculty_id):
     faculty.user.save()
     messages.success(request, f"Password for {faculty.full_name} has been updated successfully.")
     return redirect('edit_faculty', faculty_id=faculty_id)
+
+
+# ── Approval Workflow — Admin Actions ─────────────────────────────────────
+
+@never_cache
+@login_required
+@user_passes_test(is_admin, login_url='/login/')
+@require_POST
+def approve_syllabus(request, syllabus_id):
+    """
+    Admin approves a submitted syllabus → status becomes 'final'.
+    Guards:
+      - Only admin can call this.
+      - Syllabus must currently be 'submitted'.
+    Logs the decision to the audit trail.
+    """
+    from accounts.audit_logger import AuditLogger
+
+    syllabus = get_object_or_404(Syllabus, id=syllabus_id)
+
+    if syllabus.status != 'submitted':
+        label = dict(Syllabus.STATUS_CHOICES).get(syllabus.status, syllabus.status)
+        messages.error(request, f'Cannot approve — syllabus is currently "{label}".')
+        return redirect('admin_dashboard')
+
+    old_status = syllabus.status
+    syllabus.status = 'final'
+    syllabus.reviewed_by = request.user
+    syllabus.reviewed_at = timezone.now()
+    syllabus.review_remarks = None   # clear previous revision remarks on approval
+    syllabus.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'review_remarks'])
+
+    AuditLogger.log_change(
+        syllabus=syllabus,
+        user=request.user,
+        ip_address=AuditLogger.get_client_ip(request),
+        model_name='Syllabus',
+        record_id=syllabus.pk,
+        field_name='status',
+        old_value=old_status,
+        new_value='final',
+        action_type='status_change',
+    )
+
+    messages.success(
+        request,
+        f'"{syllabus.subject.course_name}" has been approved and marked as Final.'
+    )
+    return redirect('admin_dashboard')
+
+
+@never_cache
+@login_required
+@user_passes_test(is_admin, login_url='/login/')
+@require_POST
+def request_revision(request, syllabus_id):
+    """
+    Admin requests revision on a submitted syllabus → status becomes 'revision_requested'.
+    Requires 'remarks' in POST body — cannot send back without feedback.
+    Guards:
+      - Only admin can call this.
+      - Syllabus must currently be 'submitted'.
+      - Remarks must not be blank.
+    Logs the decision + remarks to the audit trail for full history.
+    """
+    from accounts.audit_logger import AuditLogger
+
+    syllabus = get_object_or_404(Syllabus, id=syllabus_id)
+
+    if syllabus.status != 'submitted':
+        label = dict(Syllabus.STATUS_CHOICES).get(syllabus.status, syllabus.status)
+        messages.error(request, f'Cannot request revision — syllabus is currently "{label}".')
+        return redirect('admin_dashboard')
+
+    remarks = request.POST.get('remarks', '').strip()
+    if not remarks:
+        messages.error(request, 'Revision remarks are required — faculty needs to know what to fix.')
+        return redirect('admin_dashboard')
+
+    old_status = syllabus.status
+    syllabus.status = 'revision_requested'
+    syllabus.reviewed_by = request.user
+    syllabus.reviewed_at = timezone.now()
+    syllabus.review_remarks = remarks
+    syllabus.submitted_at = None    # clear so it can be resubmitted cleanly
+    syllabus.save(update_fields=[
+        'status', 'reviewed_by', 'reviewed_at', 'review_remarks', 'submitted_at'
+    ])
+
+    # Log with remarks in new_value so history is preserved per Issue 4
+    AuditLogger.log_change(
+        syllabus=syllabus,
+        user=request.user,
+        ip_address=AuditLogger.get_client_ip(request),
+        model_name='Syllabus',
+        record_id=syllabus.pk,
+        field_name='status',
+        old_value={'status': old_status},
+        new_value={'status': 'revision_requested', 'remarks': remarks},
+        action_type='status_change',
+    )
+
+    messages.success(
+        request,
+        f'Revision requested for "{syllabus.subject.course_name}". Faculty has been notified via their dashboard.'
+    )
+    return redirect('admin_dashboard')
 
 
 @never_cache
